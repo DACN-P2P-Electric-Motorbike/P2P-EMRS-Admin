@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  /* Đưa bảng màu từ App.css cũ vào đây để dùng làm class Tailwind */
+  --color-primary: #29221d;
+  --color-primary-light: #473b33;
+  --color-secondary: #1e1611;
+  --color-pumpkin: #fe6c00;
+  --color-silver: #a8a5a6;
+  --color-silver-v1: #bdbabb;
+  --color-scarlet: #fe1e00;
+  --color-green: #00fe93;
+  --color-yellow: #fec80a;
+  --color-jet: #302924;
+  --color-peach: #ffc397;
+
+  --font-bai: "Bai Jamjuree", sans-serif;
+}
+
+@layer components {
+  /* Chuyển các style dùng chung vào đây */
+  .grid-common {
+    @apply bg-primary rounded-xl p-6 text-white shadow-md max-[1400px]:p-4;
+  }
+}
+
+/* Thêm vào file CSS gốc của dự án */
+@layer utilities {
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+  
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+}
