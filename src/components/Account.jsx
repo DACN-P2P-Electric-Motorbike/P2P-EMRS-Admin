@@ -81,22 +81,22 @@ const Account = () => {
           
           <div className="flex justify-center gap-2 mb-6">
              <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-medium border border-green-500/30">
-               Active
+               Đang Hoạt Động
              </span>
              <span className="px-3 py-1 rounded-full bg-white/10 text-gray-300 text-xs font-medium">
-               Joined {formData.joinDate}
+               Tham gia vào: {formData.joinDate}
              </span>
           </div>
 
           <button className="w-full py-2 rounded-lg border border-white/20 hover:bg-white/5 transition-colors text-sm">
-            Change Password
+            Đổi mật khẩu
           </button>
         </div>
 
         {/* --- RIGHT COLUMN: DETAILS FORM --- */}
         <div className="lg:col-span-2 bg-primary rounded-xl p-6 shadow-lg border border-white/5">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold text-pumpkin">General Information</h3>
+            <h3 className="text-lg font-semibold text-pumpkin">Thông tin cá nhân</h3>
             <button 
               onClick={() => !isEditing && setIsEditing(true)}
               className={`
@@ -106,14 +106,14 @@ const Account = () => {
                   : 'bg-pumpkin/10 text-pumpkin hover:bg-pumpkin hover:text-white'}
               `}
             >
-              Edit Profile
+              Chỉnh sửa thông tin
             </button>
           </div>
 
           <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* First Name */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm text-gray-400">First Name</label>
+              <label className="text-sm text-gray-400">Họ</label>
               <input 
                 type="text" 
                 name="firstName"
@@ -130,7 +130,7 @@ const Account = () => {
 
             {/* Last Name */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm text-gray-400">Last Name</label>
+              <label className="text-sm text-gray-400">Tên</label>
               <input 
                 type="text" 
                 name="lastName"
@@ -143,7 +143,7 @@ const Account = () => {
 
             {/* Email */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm text-gray-400">Email Address</label>
+              <label className="text-sm text-gray-400">Email</label>
               <input 
                 type="email" 
                 name="email"
@@ -156,7 +156,7 @@ const Account = () => {
 
             {/* Phone */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm text-gray-400">Phone Number</label>
+              <label className="text-sm text-gray-400">Số điện thoại</label>
               <input 
                 type="text" 
                 name="phone"
@@ -169,7 +169,7 @@ const Account = () => {
 
             {/* Address (Full Width) */}
             <div className="flex flex-col gap-2 md:col-span-2">
-              <label className="text-sm text-gray-400">Address</label>
+              <label className="text-sm text-gray-400">Địa chỉ</label>
               <input 
                 type="text" 
                 name="address"
@@ -182,7 +182,7 @@ const Account = () => {
 
              {/* Bio (Full Width) */}
              <div className="flex flex-col gap-2 md:col-span-2">
-              <label className="text-sm text-gray-400">Bio</label>
+              <label className="text-sm text-gray-400">Giới thiệu</label>
               <textarea 
                 name="bio"
                 rows="4"
@@ -201,13 +201,13 @@ const Account = () => {
                   onClick={() => setIsEditing(false)}
                   className="px-6 py-2 rounded-lg border border-white/20 hover:bg-white/10 transition-colors"
                 >
-                  Cancel
+                  Hủy
                 </button>
                 <button 
                   type="submit"
                   className="px-6 py-2 rounded-lg bg-pumpkin text-white font-medium hover:bg-orange-600 transition-colors shadow-lg shadow-pumpkin/30"
                 >
-                  Save Changes
+                  Lưu thay đổi
                 </button>
               </div>
             )}

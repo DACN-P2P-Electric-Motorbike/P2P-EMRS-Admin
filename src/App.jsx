@@ -5,6 +5,7 @@ import Content from './layout/Content';
 import Login from './components/login';
 import Account from './components/Account';
 import ApproveVehicles from './components/ContentMain/ApproveVehicles';
+import ApproveUsers from './components/ContentMain/ApproveUsers';
 
 // ==========================================
 // 1. COMPONENTS BẢO VỆ ROUTE
@@ -68,6 +69,7 @@ function App() {
             {/* Các route con khác */}
             <Route path="account" element={<Account />} />
             <Route path="approve-vehicles" element={<ApproveVehicles />} />
+            <Route path="approve-users" element={<ApproveUsers />} />
 
           </Route>
 

@@ -34,6 +34,34 @@ const adminService = {
     } catch (error) {
       throw error.response?.data || { message: 'Lỗi cập nhật trạng thái xe' };
     }
+  },
+
+  // Hàm lấy danh sách người dùng với phân trang và lọc trạng thái
+  getUsers: async (params = {}) => {
+    try {
+      const response = await api.get('/admin/users', { params });
+      return response.data; // Trả về { status, data: { data: [], pagination: {} } }
+    } catch (error) {
+      throw error.response?.data || { message: 'Lỗi lấy danh sách người dùng' };
+    }
+  },
+
+  // Giả định endpoint cập nhật trạng thái người dùng
+  // updateUserStatus: async (userId, status) => {
+  //   return await api.patch(`/admin/users/${userId}/status`, { status });
+  // },
+
+  // Hàm cập nhật trạng thái người dùng
+  updateUserStatus: async (userId, status) => {
+    try {
+      // Endpoint: /admin/users/{id}/status | Method: PATCH
+      const response = await api.patch(`/admin/users/${userId}/status`, {
+        status: status // Body: { "status": "ACTIVE" } hoặc "BANNED"
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Lỗi cập nhật trạng thái người dùng' };
+    }
   }
 
 };

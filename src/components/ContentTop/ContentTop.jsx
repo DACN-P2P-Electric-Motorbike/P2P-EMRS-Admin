@@ -16,7 +16,7 @@ const ContentTop = () => {
           <img src={iconsImgs.menu} alt="menu" className="w-5" /> {/* .sidebar-toggler img */}
         </button>
         <h3 className="text-white text-[20px] font-semibold"> {/* .content-top-title */}
-          Home
+          Trang chủ
         </h3>
       </div>
 
