@@ -34,7 +34,12 @@ export const navigationLinks = [
     image: iconsImgs.wallet,
     path: "/financial-operations",
   },
-  { id: 8, title: "Báo cáo sự cố", image: iconsImgs.alert, path: "/reports" },
+  {
+    id: 8,
+    title: "Báo cáo sự cố",
+    image: iconsImgs.alert,
+    path: "/incident-reports",
+  },
   { id: 9, title: "Cài đặt", image: iconsImgs.gears, path: "/settings" },
   { id: 10, title: "Tài khoản", image: iconsImgs.user, path: "/account" },
 ];

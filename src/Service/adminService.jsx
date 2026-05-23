@@ -145,6 +145,29 @@ const adminService = {
       throw error.response?.data || { message: "Lỗi ghi nhận hoàn cọc" };
     }
   },
+
+  getIncidentQueue: async (limit = 50) => {
+    try {
+      const response = await api.get("/incidents/admin/queue", {
+        params: { limit },
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi lấy hàng chờ sự cố" };
+    }
+  },
+
+  reviewIncidentReport: async (incidentId, payload) => {
+    try {
+      const response = await api.patch(
+        `/incidents/${incidentId}/status`,
+        payload,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi cập nhật sự cố" };
+    }
+  },
 };
 
 export default adminService;

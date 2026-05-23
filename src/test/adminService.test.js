@@ -132,6 +132,28 @@ describe("AdminService - Unit Tests (UC-10, 11, 12)", () => {
     });
   });
 
+  test("getIncidentQueue: Phải lấy hàng chờ báo cáo sự cố", async () => {
+    api.get.mockResolvedValue({ data: { status: "success" } });
+
+    await adminService.getIncidentQueue(100);
+
+    expect(api.get).toHaveBeenCalledWith("/incidents/admin/queue", {
+      params: { limit: 100 },
+    });
+  });
+
+  test("reviewIncidentReport: Phải gửi trạng thái xử lý sự cố", async () => {
+    api.patch.mockResolvedValue({ data: { status: "success" } });
+    const payload = { status: "RESOLVED", adminNotes: "Đã đối chiếu ảnh" };
+
+    await adminService.reviewIncidentReport("incident-1", payload);
+
+    expect(api.patch).toHaveBeenCalledWith(
+      "/incidents/incident-1/status",
+      payload,
+    );
+  });
+
   // --- KIỂM THỬ XỬ LÝ LỖI (ERROR HANDLING) ---
 
   test("Phải ném lỗi (throw error) khi API trả về lỗi", async () => {

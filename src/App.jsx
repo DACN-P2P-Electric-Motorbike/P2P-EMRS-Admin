@@ -14,6 +14,7 @@ import ApproveVehicles from "./components/ContentMain/ApproveVehicles";
 import ApproveUsers from "./components/ContentMain/ApproveUsers";
 import FinancialOperations from "./components/ContentMain/FinancialOperations";
 import HandoverReviewQueue from "./components/ContentMain/HandoverReviewQueue";
+import IncidentReportsQueue from "./components/ContentMain/IncidentReportsQueue";
 import KycReviewQueue from "./components/ContentMain/KycReviewQueue";
 
 // ==========================================
@@ -80,6 +81,7 @@ function App() {
             <Route path="approve-users" element={<ApproveUsers />} />
             <Route path="kyc-review" element={<KycReviewQueue />} />
             <Route path="handover-review" element={<HandoverReviewQueue />} />
+            <Route path="incident-reports" element={<IncidentReportsQueue />} />
             <Route
               path="financial-operations"
               element={<FinancialOperations />}
