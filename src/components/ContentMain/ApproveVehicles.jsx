@@ -2,6 +2,33 @@ import { useState, useEffect } from 'react';
 import adminService from '../../Service/adminService';
 import PropTypes from 'prop-types';
 
+const conditionLabel = (value) => {
+  const labels = {
+    NEW: 'Xe mới',
+    LIKE_NEW: 'Như mới',
+    GOOD: 'Tốt',
+    FAIR: 'Khá',
+    NEEDS_MAINTENANCE: 'Cần bảo trì',
+  };
+  return labels[value] || value;
+};
+
+const batteryTypeLabel = (value) => {
+  const labels = {
+    FIXED_NON_REMOVABLE: 'Pin liền xe',
+    REMOVABLE: 'Pin tháo rời',
+    SWAPPABLE: 'Pin có thể đổi',
+  };
+  return labels[value] || value;
+};
+
+const formatServiceDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString('vi-VN');
+};
+
 const ApproveVehicles = () => {
   const [vehicles, setVehicles] = useState([]);
   const [pagination, setPagination] = useState({});
@@ -109,6 +136,28 @@ const ApproveVehicles = () => {
                   <td className="p-5">
                     <div className="font-bold text-white">{v.vehicle_info.brand}</div>
                     <div className="text-sm text-gray-400">{v.vehicle_info.model}</div>
+                    <div className="mt-2 grid gap-1 text-[11px] text-gray-400">
+                      {v.vehicle_info.condition && (
+                        <span>Tình trạng: {conditionLabel(v.vehicle_info.condition)}</span>
+                      )}
+                      {v.vehicle_info.first_registration_year && (
+                        <span>Năm đăng ký: {v.vehicle_info.first_registration_year}</span>
+                      )}
+                      {v.vehicle_info.battery_type && (
+                        <span>Loại pin: {batteryTypeLabel(v.vehicle_info.battery_type)}</span>
+                      )}
+                      {v.vehicle_info.battery_health != null && (
+                        <span>Sức khỏe pin: {v.vehicle_info.battery_health}%</span>
+                      )}
+                      {v.vehicle_info.battery_cycle_count != null && (
+                        <span>Chu kỳ sạc: {v.vehicle_info.battery_cycle_count}</span>
+                      )}
+                      {formatServiceDate(v.vehicle_info.battery_last_serviced_at) && (
+                        <span>
+                          Bảo dưỡng pin: {formatServiceDate(v.vehicle_info.battery_last_serviced_at)}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="p-5">
                     <div className="text-sm">{v.owner.full_name}</div>
