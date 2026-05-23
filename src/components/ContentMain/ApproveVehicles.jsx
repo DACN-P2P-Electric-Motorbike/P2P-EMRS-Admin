@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import adminService from '../../Service/adminService';
-import PropTypes from 'prop-types';
 
 const conditionLabel = (value) => {
   const labels = {
@@ -39,7 +38,7 @@ const ApproveVehicles = () => {
     limit: 10
   });
 
-  const fetchVehicles = async () => {
+  const fetchVehicles = useCallback(async () => {
     setLoading(true);
     try {
       const result = await adminService.getVehicles(filters);
@@ -52,23 +51,11 @@ const ApproveVehicles = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
     fetchVehicles();
-  }, [filters]);
-
-  const handleApprove = async (id) => {
-    if (window.confirm("Xác nhận phê duyệt xe này?")) {
-      try {
-        await adminService.approveVehicle(id);
-        alert("Phê duyệt thành công!");
-        fetchVehicles(); // Tải lại danh sách
-      } catch (err) {
-        alert("Lỗi: " + err.message);
-      }
-    }
-  };
+  }, [fetchVehicles]);
 
   // Hàm xử lý chung cho Duyệt và Từ chối
   const handleStatusUpdate = async (id, newStatus) => {
@@ -229,7 +216,4 @@ const ApproveVehicles = () => {
   );
 };
 
-ApproveVehicles.propTypes = {
-    // Không có props nào được truyền vào, nhưng nếu có, bạn có thể định nghĩa ở đây
-};
 export default ApproveVehicles;

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import adminService from '../../Service/adminService';
-import PropTypes from 'prop-types';
 
 const ApproveUsers = () => {
   const [users, setUsers] = useState([]);

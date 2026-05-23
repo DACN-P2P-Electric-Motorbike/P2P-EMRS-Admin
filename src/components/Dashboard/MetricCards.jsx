@@ -1,5 +1,3 @@
-// src/components/Dashboard/MetricCards.jsx
-import { iconsImgs } from "../../utils/images";
 import PropTypes from 'prop-types';
 
 const MetricCards = ({ metrics }) => {
