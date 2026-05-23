@@ -32,6 +32,28 @@ const StatusPill = ({ value }) => (
 
 const formatId = (id) => (id ? `#${id.slice(0, 8)}` : "-");
 
+const getEvidence = (charge) => {
+  if (!charge?.evidence) return {};
+  if (typeof charge.evidence === "string") {
+    try {
+      return JSON.parse(charge.evidence);
+    } catch {
+      return {};
+    }
+  }
+  return charge.evidence;
+};
+
+const getDisputeInfo = (charge) => getEvidence(charge).dispute || null;
+
+const formatDateTime = (value) =>
+  value
+    ? new Intl.DateTimeFormat("vi-VN", {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(new Date(value))
+    : "";
+
 const FinancialOperations = () => {
   const [queue, setQueue] = useState({ deposits: [], charges: [] });
   const [loading, setLoading] = useState(true);
@@ -191,70 +213,137 @@ const FinancialOperations = () => {
                 <th className="p-5">Loại phí</th>
                 <th className="p-5">Trạng thái</th>
                 <th className="p-5">Số tiền</th>
-                <th className="p-5">Mô tả</th>
+                <th className="p-5">Mô tả / Khiếu nại</th>
                 <th className="p-5">Hành động</th>
               </tr>
             </thead>
             <tbody>
               {queue.charges.length > 0 ? (
-                queue.charges.map((charge) => (
-                  <tr
-                    key={charge.id}
-                    className="border-b border-white/5 hover:bg-white/5"
-                  >
-                    <td className="p-5 font-semibold">
-                      {formatId(charge.bookingId)}
-                    </td>
-                    <td className="p-5 text-sm">{charge.type}</td>
-                    <td className="p-5">
-                      <StatusPill value={charge.status} />
-                    </td>
-                    <td className="p-5 font-semibold">
-                      {money.format(charge.amount || 0)}
-                    </td>
-                    <td className="p-5 text-sm text-gray-300 max-w-[320px]">
-                      {charge.description}
-                    </td>
-                    <td className="p-5">
-                      <div className="flex flex-wrap gap-2">
-                        {charge.status === "PENDING_REVIEW" && (
-                          <>
-                            <button
-                              disabled={busyId === charge.id}
-                              onClick={() => reviewCharge(charge, "APPROVED")}
-                              className="px-3 py-1.5 rounded-md bg-green-500/20 text-green-300 hover:bg-green-500 hover:text-white text-xs font-bold"
-                            >
-                              Duyệt
-                            </button>
-                            <button
-                              disabled={busyId === charge.id}
-                              onClick={() => reviewCharge(charge, "WAIVED")}
-                              className="px-3 py-1.5 rounded-md bg-gray-500/20 text-gray-300 hover:bg-gray-500 hover:text-white text-xs font-bold"
-                            >
-                              Miễn
-                            </button>
-                            <button
-                              disabled={busyId === charge.id}
-                              onClick={() => reviewCharge(charge, "DISPUTED")}
-                              className="px-3 py-1.5 rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500 hover:text-white text-xs font-bold"
-                            >
-                              Tranh chấp
-                            </button>
-                          </>
+                queue.charges.map((charge) => {
+                  const dispute = getDisputeInfo(charge);
+
+                  return (
+                    <tr
+                      key={charge.id}
+                      className="border-b border-white/5 hover:bg-white/5"
+                    >
+                      <td className="p-5 font-semibold">
+                        {formatId(charge.bookingId)}
+                      </td>
+                      <td className="p-5 text-sm">{charge.type}</td>
+                      <td className="p-5">
+                        <StatusPill value={charge.status} />
+                      </td>
+                      <td className="p-5 font-semibold">
+                        {money.format(charge.amount || 0)}
+                      </td>
+                      <td className="p-5 text-sm text-gray-300 max-w-[360px]">
+                        <p>{charge.description}</p>
+                        {dispute && (
+                          <div className="mt-3 rounded-lg border border-purple-400/20 bg-purple-500/10 p-3 text-purple-100">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-purple-200">
+                              Khiếu nại của renter
+                            </p>
+                            <p className="mt-1 text-xs">{dispute.reason}</p>
+                            {dispute.disputedAt && (
+                              <p className="mt-1 text-[11px] text-purple-200/80">
+                                Gửi lúc {formatDateTime(dispute.disputedAt)}
+                              </p>
+                            )}
+                            {dispute.evidenceUrls?.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {dispute.evidenceUrls.map((url, index) => (
+                                  <a
+                                    key={url}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[11px] font-semibold text-purple-100 underline decoration-purple-300/60"
+                                  >
+                                    Bằng chứng {index + 1}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         )}
-                        {charge.status === "APPROVED" && (
-                          <button
-                            disabled={busyId === `capture-${charge.bookingId}`}
-                            onClick={() => captureBooking(charge.bookingId)}
-                            className="px-3 py-1.5 rounded-md bg-pumpkin/20 text-pumpkin hover:bg-pumpkin hover:text-white text-xs font-bold"
-                          >
-                            Khấu trừ
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="p-5">
+                        <div className="flex flex-wrap gap-2">
+                          {charge.status === "PENDING_REVIEW" && (
+                            <>
+                              <button
+                                disabled={busyId === charge.id}
+                                onClick={() =>
+                                  reviewCharge(charge, "APPROVED")
+                                }
+                                className="px-3 py-1.5 rounded-md bg-green-500/20 text-green-300 hover:bg-green-500 hover:text-white text-xs font-bold"
+                              >
+                                Duyệt
+                              </button>
+                              <button
+                                disabled={busyId === charge.id}
+                                onClick={() => reviewCharge(charge, "WAIVED")}
+                                className="px-3 py-1.5 rounded-md bg-gray-500/20 text-gray-300 hover:bg-gray-500 hover:text-white text-xs font-bold"
+                              >
+                                Miễn
+                              </button>
+                              <button
+                                disabled={busyId === charge.id}
+                                onClick={() =>
+                                  reviewCharge(charge, "DISPUTED")
+                                }
+                                className="px-3 py-1.5 rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500 hover:text-white text-xs font-bold"
+                              >
+                                Tranh chấp
+                              </button>
+                            </>
+                          )}
+                          {charge.status === "DISPUTED" && (
+                            <>
+                              <button
+                                disabled={busyId === charge.id}
+                                onClick={() =>
+                                  reviewCharge(charge, "APPROVED")
+                                }
+                                className="px-3 py-1.5 rounded-md bg-green-500/20 text-green-300 hover:bg-green-500 hover:text-white text-xs font-bold"
+                              >
+                                Chấp nhận thu
+                              </button>
+                              <button
+                                disabled={busyId === charge.id}
+                                onClick={() => reviewCharge(charge, "WAIVED")}
+                                className="px-3 py-1.5 rounded-md bg-gray-500/20 text-gray-300 hover:bg-gray-500 hover:text-white text-xs font-bold"
+                              >
+                                Miễn phí
+                              </button>
+                              <button
+                                disabled={busyId === charge.id}
+                                onClick={() =>
+                                  reviewCharge(charge, "CANCELLED")
+                                }
+                                className="px-3 py-1.5 rounded-md bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white text-xs font-bold"
+                              >
+                                Hủy phí
+                              </button>
+                            </>
+                          )}
+                          {charge.status === "APPROVED" && (
+                            <button
+                              disabled={
+                                busyId === `capture-${charge.bookingId}`
+                              }
+                              onClick={() => captureBooking(charge.bookingId)}
+                              className="px-3 py-1.5 rounded-md bg-pumpkin/20 text-pumpkin hover:bg-pumpkin hover:text-white text-xs font-bold"
+                            >
+                              Khấu trừ
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td
