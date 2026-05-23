@@ -18,13 +18,19 @@ export const navigationLinks = [
   },
   {
     id: 5,
+    title: "Duyệt KYC",
+    image: iconsImgs.user,
+    path: "/kyc-review",
+  },
+  {
+    id: 6,
     title: "Tài chính",
     image: iconsImgs.wallet,
     path: "/financial-operations",
   },
-  { id: 6, title: "Báo cáo sự cố", image: iconsImgs.alert, path: "/reports" },
-  { id: 7, title: "Cài đặt", image: iconsImgs.gears, path: "/settings" },
-  { id: 8, title: "Tài khoản", image: iconsImgs.user, path: "/account" },
+  { id: 7, title: "Báo cáo sự cố", image: iconsImgs.alert, path: "/reports" },
+  { id: 8, title: "Cài đặt", image: iconsImgs.gears, path: "/settings" },
+  { id: 9, title: "Tài khoản", image: iconsImgs.user, path: "/account" },
 ];
 
 export const transactions = [

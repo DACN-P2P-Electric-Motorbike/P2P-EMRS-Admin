@@ -13,6 +13,7 @@ import Account from "./components/Account";
 import ApproveVehicles from "./components/ContentMain/ApproveVehicles";
 import ApproveUsers from "./components/ContentMain/ApproveUsers";
 import FinancialOperations from "./components/ContentMain/FinancialOperations";
+import KycReviewQueue from "./components/ContentMain/KycReviewQueue";
 
 // ==========================================
 // 1. COMPONENTS BẢO VỆ ROUTE
@@ -76,6 +77,7 @@ function App() {
             <Route path="account" element={<Account />} />
             <Route path="approve-vehicles" element={<ApproveVehicles />} />
             <Route path="approve-users" element={<ApproveUsers />} />
+            <Route path="kyc-review" element={<KycReviewQueue />} />
             <Route
               path="financial-operations"
               element={<FinancialOperations />}

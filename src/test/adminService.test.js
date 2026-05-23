@@ -101,6 +101,27 @@ describe("AdminService - Unit Tests (UC-10, 11, 12)", () => {
     );
   });
 
+  test("getKycSubmissions: Phải lấy danh sách KYC theo bộ lọc", async () => {
+    api.get.mockResolvedValue({ data: { status: "success" } });
+    const params = { status: "PENDING", page: 1, limit: 10 };
+
+    await adminService.getKycSubmissions(params);
+
+    expect(api.get).toHaveBeenCalledWith("/admin/kyc", { params });
+  });
+
+  test("reviewKycSubmission: Phải gửi quyết định duyệt KYC", async () => {
+    api.patch.mockResolvedValue({ data: { status: "success" } });
+    const payload = { status: "REJECTED", rejectionReason: "Ảnh bị mờ" };
+
+    await adminService.reviewKycSubmission("kyc-1", payload);
+
+    expect(api.patch).toHaveBeenCalledWith(
+      "/admin/kyc/kyc-1/review",
+      payload,
+    );
+  });
+
   // --- KIỂM THỬ XỬ LÝ LỖI (ERROR HANDLING) ---
 
   test("Phải ném lỗi (throw error) khi API trả về lỗi", async () => {

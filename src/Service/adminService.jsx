@@ -69,6 +69,27 @@ const adminService = {
     }
   },
 
+  getKycSubmissions: async (params = {}) => {
+    try {
+      const response = await api.get("/admin/kyc", { params });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi lấy danh sách KYC" };
+    }
+  },
+
+  reviewKycSubmission: async (verificationId, payload) => {
+    try {
+      const response = await api.patch(
+        `/admin/kyc/${verificationId}/review`,
+        payload,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi duyệt KYC" };
+    }
+  },
+
   getFinancialQueue: async (limit = 50) => {
     try {
       const response = await api.get("/financial/admin/queue", {
