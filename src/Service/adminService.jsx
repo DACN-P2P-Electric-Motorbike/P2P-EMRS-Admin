@@ -90,6 +90,17 @@ const adminService = {
     }
   },
 
+  getHandoverReviewQueue: async (limit = 50) => {
+    try {
+      const response = await api.get("/handover/admin/queue", {
+        params: { limit },
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi lấy hàng chờ bàn giao" };
+    }
+  },
+
   getFinancialQueue: async (limit = 50) => {
     try {
       const response = await api.get("/financial/admin/queue", {

@@ -13,6 +13,7 @@ import Account from "./components/Account";
 import ApproveVehicles from "./components/ContentMain/ApproveVehicles";
 import ApproveUsers from "./components/ContentMain/ApproveUsers";
 import FinancialOperations from "./components/ContentMain/FinancialOperations";
+import HandoverReviewQueue from "./components/ContentMain/HandoverReviewQueue";
 import KycReviewQueue from "./components/ContentMain/KycReviewQueue";
 
 // ==========================================
@@ -78,6 +79,7 @@ function App() {
             <Route path="approve-vehicles" element={<ApproveVehicles />} />
             <Route path="approve-users" element={<ApproveUsers />} />
             <Route path="kyc-review" element={<KycReviewQueue />} />
+            <Route path="handover-review" element={<HandoverReviewQueue />} />
             <Route
               path="financial-operations"
               element={<FinancialOperations />}

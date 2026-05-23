@@ -122,6 +122,16 @@ describe("AdminService - Unit Tests (UC-10, 11, 12)", () => {
     );
   });
 
+  test("getHandoverReviewQueue: Phải lấy hàng chờ bằng chứng bàn giao", async () => {
+    api.get.mockResolvedValue({ data: { status: "success" } });
+
+    await adminService.getHandoverReviewQueue(100);
+
+    expect(api.get).toHaveBeenCalledWith("/handover/admin/queue", {
+      params: { limit: 100 },
+    });
+  });
+
   // --- KIỂM THỬ XỬ LÝ LỖI (ERROR HANDLING) ---
 
   test("Phải ném lỗi (throw error) khi API trả về lỗi", async () => {

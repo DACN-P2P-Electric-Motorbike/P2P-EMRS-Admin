@@ -24,13 +24,19 @@ export const navigationLinks = [
   },
   {
     id: 6,
+    title: "Bàn giao xe",
+    image: iconsImgs.card,
+    path: "/handover-review",
+  },
+  {
+    id: 7,
     title: "Tài chính",
     image: iconsImgs.wallet,
     path: "/financial-operations",
   },
-  { id: 7, title: "Báo cáo sự cố", image: iconsImgs.alert, path: "/reports" },
-  { id: 8, title: "Cài đặt", image: iconsImgs.gears, path: "/settings" },
-  { id: 9, title: "Tài khoản", image: iconsImgs.user, path: "/account" },
+  { id: 8, title: "Báo cáo sự cố", image: iconsImgs.alert, path: "/reports" },
+  { id: 9, title: "Cài đặt", image: iconsImgs.gears, path: "/settings" },
+  { id: 10, title: "Tài khoản", image: iconsImgs.user, path: "/account" },
 ];
 
 export const transactions = [
