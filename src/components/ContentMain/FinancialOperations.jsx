@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import PropTypes from "prop-types";
 import adminService from "../../Service/adminService";
 
 const money = new Intl.NumberFormat("vi-VN", {
@@ -29,6 +30,10 @@ const StatusPill = ({ value }) => (
     {value}
   </span>
 );
+
+StatusPill.propTypes = {
+  value: PropTypes.string.isRequired,
+};
 
 const formatId = (id) => (id ? `#${id.slice(0, 8)}` : "-");
 
