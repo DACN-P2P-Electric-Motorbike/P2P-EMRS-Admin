@@ -101,6 +101,32 @@ describe("AdminService - Unit Tests (UC-10, 11, 12)", () => {
     );
   });
 
+  test("createOrRefreshOwnerPayout: Phải gọi endpoint tạo/cập nhật payout owner", async () => {
+    api.post.mockResolvedValue({ data: { status: "success" } });
+
+    await adminService.createOrRefreshOwnerPayout("booking-1");
+
+    expect(api.post).toHaveBeenCalledWith(
+      "/financial/bookings/booking-1/payout",
+    );
+  });
+
+  test("updateOwnerPayoutStatus: Phải gửi trạng thái xử lý payout owner", async () => {
+    api.patch.mockResolvedValue({ data: { status: "success" } });
+    const payload = {
+      status: "COMPLETED",
+      externalReference: "BANK-TXN-1",
+      notes: "Paid",
+    };
+
+    await adminService.updateOwnerPayoutStatus("payout-1", payload);
+
+    expect(api.patch).toHaveBeenCalledWith(
+      "/financial/payouts/payout-1/status",
+      payload,
+    );
+  });
+
   test("getKycSubmissions: Phải lấy danh sách KYC theo bộ lọc", async () => {
     api.get.mockResolvedValue({ data: { status: "success" } });
     const params = { status: "PENDING", page: 1, limit: 10 };

@@ -21,6 +21,11 @@ const statusClass = {
   WAIVED: "bg-gray-500/10 text-gray-300",
   DEDUCTED_FROM_DEPOSIT: "bg-red-500/10 text-red-300",
   CANCELLED: "bg-gray-500/10 text-gray-300",
+  PENDING: "bg-yellow-500/10 text-yellow-300",
+  ON_HOLD: "bg-purple-500/10 text-purple-300",
+  PROCESSING: "bg-blue-500/10 text-blue-300",
+  COMPLETED: "bg-emerald-500/10 text-emerald-300",
+  FAILED: "bg-red-500/10 text-red-300",
 };
 
 const StatusPill = ({ value }) => (
@@ -59,8 +64,16 @@ const formatDateTime = (value) =>
       }).format(new Date(value))
     : "";
 
+const emptyQueue = { deposits: [], charges: [], payouts: [] };
+
+const normalizeQueue = (data = emptyQueue) => ({
+  deposits: data.deposits || [],
+  charges: data.charges || [],
+  payouts: data.payouts || [],
+});
+
 const FinancialOperations = () => {
-  const [queue, setQueue] = useState({ deposits: [], charges: [] });
+  const [queue, setQueue] = useState(emptyQueue);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
@@ -70,7 +83,7 @@ const FinancialOperations = () => {
     setError("");
     try {
       const result = await adminService.getFinancialQueue(100);
-      setQueue(result.data || { deposits: [], charges: [] });
+      setQueue(normalizeQueue(result.data));
     } catch (err) {
       setError(err.message || "Không thể tải hàng chờ tài chính");
     } finally {
@@ -91,9 +104,14 @@ const FinancialOperations = () => {
       (sum, deposit) => sum + Number(deposit.heldAmount || 0),
       0,
     );
+    const payoutAmount = queue.payouts.reduce(
+      (sum, payout) => sum + Number(payout.payoutAmount || 0),
+      0,
+    );
     return {
       pendingChargeAmount,
       heldDepositAmount,
+      payoutAmount,
     };
   }, [queue]);
 
@@ -147,6 +165,46 @@ const FinancialOperations = () => {
     }
   };
 
+  const refreshPayout = async (bookingId) => {
+    setBusyId(`refresh-payout-${bookingId}`);
+    try {
+      await adminService.createOrRefreshOwnerPayout(bookingId);
+      await loadQueue();
+    } catch (err) {
+      alert(err.message || "Không thể cập nhật payout");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const updatePayout = async (payout, status) => {
+    let externalReference;
+    if (status === "COMPLETED") {
+      externalReference = window.prompt(
+        "Mã giao dịch ngân hàng",
+        payout.externalReference || "",
+      );
+      if (externalReference === null) return;
+    }
+
+    const notes = window.prompt("Ghi chú payout", "");
+    if (notes === null) return;
+
+    setBusyId(`payout-${payout.id}`);
+    try {
+      await adminService.updateOwnerPayoutStatus(payout.id, {
+        status,
+        externalReference: externalReference || undefined,
+        notes,
+      });
+      await loadQueue();
+    } catch (err) {
+      alert(err.message || "Không thể xử lý payout");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-white">
@@ -181,7 +239,7 @@ const FinancialOperations = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-primary border border-white/5 rounded-xl p-5">
           <p className="text-gray-400 text-xs uppercase tracking-widest">
             Phí cần xử lý
@@ -202,6 +260,14 @@ const FinancialOperations = () => {
           </p>
           <p className="text-2xl font-bold mt-2">
             {money.format(totals.heldDepositAmount)}
+          </p>
+        </div>
+        <div className="bg-primary border border-white/5 rounded-xl p-5">
+          <p className="text-gray-400 text-xs uppercase tracking-widest">
+            Payout owner
+          </p>
+          <p className="text-2xl font-bold mt-2">
+            {queue.payouts.length} / {money.format(totals.payoutAmount)}
           </p>
         </div>
       </div>
@@ -364,7 +430,7 @@ const FinancialOperations = () => {
         </div>
       </section>
 
-      <section className="bg-primary rounded-xl border border-white/5 overflow-hidden shadow-2xl">
+      <section className="bg-primary rounded-xl border border-white/5 overflow-hidden shadow-2xl mb-6">
         <div className="p-5 border-b border-white/5">
           <h3 className="font-bold uppercase tracking-wider">Tiền cọc</h3>
         </div>
@@ -437,6 +503,120 @@ const FinancialOperations = () => {
                     className="p-10 text-center text-gray-500 italic"
                   >
                     Không có tiền cọc cần xử lý.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-primary rounded-xl border border-white/5 overflow-hidden shadow-2xl">
+        <div className="p-5 border-b border-white/5">
+          <h3 className="font-bold uppercase tracking-wider">Payout owner</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[940px]">
+            <thead>
+              <tr className="text-gray-400 border-b border-white/5 text-xs uppercase tracking-widest">
+                <th className="p-5">Booking</th>
+                <th className="p-5">Trạng thái</th>
+                <th className="p-5">Rental net</th>
+                <th className="p-5">Phí phát sinh</th>
+                <th className="p-5">Payout</th>
+                <th className="p-5">Giữ bởi</th>
+                <th className="p-5">Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {queue.payouts.length > 0 ? (
+                queue.payouts.map((payout) => (
+                  <tr
+                    key={payout.id}
+                    className="border-b border-white/5 hover:bg-white/5"
+                  >
+                    <td className="p-5 font-semibold">
+                      {formatId(payout.bookingId)}
+                    </td>
+                    <td className="p-5">
+                      <StatusPill value={payout.status} />
+                    </td>
+                    <td className="p-5">
+                      {money.format(payout.ownerRentalAmount || 0)}
+                    </td>
+                    <td className="p-5">
+                      {money.format(payout.postTripChargeAmount || 0)}
+                    </td>
+                    <td className="p-5 font-semibold">
+                      {money.format(payout.payoutAmount || 0)}
+                    </td>
+                    <td className="p-5 text-sm text-gray-300 max-w-[260px]">
+                      {payout.holdReason || payout.externalReference || "-"}
+                    </td>
+                    <td className="p-5">
+                      <div className="flex flex-wrap gap-2">
+                        {["ON_HOLD", "FAILED", "PENDING"].includes(
+                          payout.status,
+                        ) && (
+                          <button
+                            disabled={
+                              busyId ===
+                              `refresh-payout-${payout.bookingId}`
+                            }
+                            onClick={() => refreshPayout(payout.bookingId)}
+                            className="px-3 py-1.5 rounded-md bg-white/10 text-gray-200 hover:bg-white/20 text-xs font-bold"
+                          >
+                            Làm mới
+                          </button>
+                        )}
+                        {["PENDING", "FAILED"].includes(payout.status) && (
+                          <button
+                            disabled={busyId === `payout-${payout.id}`}
+                            onClick={() =>
+                              updatePayout(payout, "PROCESSING")
+                            }
+                            className="px-3 py-1.5 rounded-md bg-blue-500/20 text-blue-300 hover:bg-blue-500 hover:text-white text-xs font-bold"
+                          >
+                            Xử lý
+                          </button>
+                        )}
+                        {["PENDING", "PROCESSING", "FAILED"].includes(
+                          payout.status,
+                        ) && (
+                          <button
+                            disabled={busyId === `payout-${payout.id}`}
+                            onClick={() =>
+                              updatePayout(payout, "COMPLETED")
+                            }
+                            className="px-3 py-1.5 rounded-md bg-green-500/20 text-green-300 hover:bg-green-500 hover:text-white text-xs font-bold"
+                          >
+                            Hoàn tất payout
+                          </button>
+                        )}
+                        {["PENDING", "ON_HOLD", "FAILED", "PROCESSING"].includes(
+                          payout.status,
+                        ) && (
+                          <button
+                            disabled={busyId === `payout-${payout.id}`}
+                            onClick={() =>
+                              updatePayout(payout, "CANCELLED")
+                            }
+                            className="px-3 py-1.5 rounded-md bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white text-xs font-bold"
+                          >
+                            Hủy
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan="7"
+                    className="p-10 text-center text-gray-500 italic"
+                  >
+                    Không có payout owner cần xử lý.
                   </td>
                 </tr>
               )}

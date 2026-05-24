@@ -146,6 +146,27 @@ const adminService = {
     }
   },
 
+  createOrRefreshOwnerPayout: async (bookingId) => {
+    try {
+      const response = await api.post(`/financial/bookings/${bookingId}/payout`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi cập nhật payout owner" };
+    }
+  },
+
+  updateOwnerPayoutStatus: async (payoutId, payload) => {
+    try {
+      const response = await api.patch(
+        `/financial/payouts/${payoutId}/status`,
+        payload,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi xử lý payout owner" };
+    }
+  },
+
   getIncidentQueue: async (limit = 50) => {
     try {
       const response = await api.get("/incidents/admin/queue", {
