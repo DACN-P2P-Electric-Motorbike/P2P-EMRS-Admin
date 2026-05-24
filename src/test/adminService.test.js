@@ -142,10 +142,7 @@ describe("AdminService - Unit Tests (UC-10, 11, 12)", () => {
 
     await adminService.reviewKycSubmission("kyc-1", payload);
 
-    expect(api.patch).toHaveBeenCalledWith(
-      "/admin/kyc/kyc-1/review",
-      payload,
-    );
+    expect(api.patch).toHaveBeenCalledWith("/admin/kyc/kyc-1/review", payload);
   });
 
   test("getHandoverReviewQueue: Phải lấy hàng chờ bằng chứng bàn giao", async () => {
@@ -165,6 +162,83 @@ describe("AdminService - Unit Tests (UC-10, 11, 12)", () => {
 
     expect(api.get).toHaveBeenCalledWith("/incidents/admin/queue", {
       params: { limit: 100 },
+    });
+  });
+
+  test("getBookingClaimSummary: Phải lấy hồ sơ claim tổng hợp của booking", async () => {
+    api.get.mockResolvedValue({ data: { status: "success" } });
+
+    await adminService.getBookingClaimSummary("booking-1");
+
+    expect(api.get).toHaveBeenCalledWith(
+      "/incidents/bookings/booking-1/claim-summary",
+    );
+  });
+
+  test("getEvidenceAnnotations: Phải lấy ghi chú evidence của booking", async () => {
+    api.get.mockResolvedValue({ data: { status: "success" } });
+
+    await adminService.getEvidenceAnnotations("booking-1");
+
+    expect(api.get).toHaveBeenCalledWith(
+      "/incidents/bookings/booking-1/evidence-annotations",
+    );
+  });
+
+  test("createEvidenceAnnotation: Phải gửi ghi chú evidence", async () => {
+    api.post.mockResolvedValue({ data: { id: "annotation-1" } });
+    const payload = {
+      targetType: "INCIDENT_REPORT",
+      targetId: "incident-1",
+      note: "Ảnh checkout khớp báo cáo.",
+      tags: ["damage"],
+    };
+
+    await adminService.createEvidenceAnnotation("booking-1", payload);
+
+    expect(api.post).toHaveBeenCalledWith(
+      "/incidents/bookings/booking-1/evidence-annotations",
+      payload,
+    );
+  });
+
+  test("createOrRefreshClaimCase: Phải tạo hoặc cập nhật hồ sơ claim", async () => {
+    api.post.mockResolvedValue({ data: { id: "claim-case-1" } });
+
+    await adminService.createOrRefreshClaimCase("booking-1");
+
+    expect(api.post).toHaveBeenCalledWith(
+      "/incidents/bookings/booking-1/claim-case",
+    );
+  });
+
+  test("reviewClaimCase: Phải gửi quyết định four-eyes cho claim", async () => {
+    api.patch.mockResolvedValue({ data: { id: "claim-case-1" } });
+    const payload = {
+      decision: "OWNER_CLAIM_APPROVED",
+      notes: "Đồng ý bằng chứng",
+    };
+
+    await adminService.reviewClaimCase("claim-case-1", payload);
+
+    expect(api.patch).toHaveBeenCalledWith(
+      "/incidents/claim-cases/claim-case-1/review",
+      payload,
+    );
+  });
+
+  test("getClaimCases: Phải lấy danh sách hồ sơ claim theo trạng thái", async () => {
+    api.get.mockResolvedValue({ data: { status: "success" } });
+    const params = {
+      status: "PENDING_SECOND_REVIEW",
+      slaStatus: "OVERDUE",
+      limit: 20,
+    };
+
+    await adminService.getClaimCases(params);
+
+    expect(api.get).toHaveBeenCalledWith("/incidents/admin/claim-cases", {
+      params,
     });
   });
 

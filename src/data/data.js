@@ -40,8 +40,14 @@ export const navigationLinks = [
     image: iconsImgs.alert,
     path: "/incident-reports",
   },
-  { id: 9, title: "Cài đặt", image: iconsImgs.gears, path: "/settings" },
-  { id: 10, title: "Tài khoản", image: iconsImgs.user, path: "/account" },
+  {
+    id: 9,
+    title: "Hồ sơ claim",
+    image: iconsImgs.alert,
+    path: "/claim-cases",
+  },
+  { id: 10, title: "Cài đặt", image: iconsImgs.gears, path: "/settings" },
+  { id: 11, title: "Tài khoản", image: iconsImgs.user, path: "/account" },
 ];
 
 export const transactions = [
