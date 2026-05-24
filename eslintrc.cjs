@@ -1,5 +1,13 @@
 module.exports = {
   env: { browser: true, es2020: true },
+  globals: {
+    beforeEach: 'readonly',
+    describe: 'readonly',
+    expect: 'readonly',
+    it: 'readonly',
+    test: 'readonly',
+    vi: 'readonly',
+  },
   extends: [
     'eslint:recommended',
     'plugin:react/recommended',
@@ -10,6 +18,6 @@ module.exports = {
   settings: { react: { version: '18.2' } },
   plugins: ['react-refresh'],
   rules: {
-    'react-refresh/only-export-components': 'warn',
+    'react-refresh/only-export-components': 'off',
   },
 }

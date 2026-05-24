@@ -1,11 +1,21 @@
-import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
-import './App.css';
-import Sidebar from './layout/Sidebar';
-import Content from './layout/Content';
-import Login from './components/login';
-import Account from './components/Account';
-import ApproveVehicles from './components/ContentMain/ApproveVehicles';
-import ApproveUsers from './components/ContentMain/ApproveUsers';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Outlet,
+  Navigate,
+} from "react-router-dom";
+import "./App.css";
+import Sidebar from "./layout/Sidebar";
+import Content from "./layout/Content";
+import Login from "./components/login";
+import Account from "./components/Account";
+import ApproveVehicles from "./components/ContentMain/ApproveVehicles";
+import ApproveUsers from "./components/ContentMain/ApproveUsers";
+import FinancialOperations from "./components/ContentMain/FinancialOperations";
+import HandoverReviewQueue from "./components/ContentMain/HandoverReviewQueue";
+import IncidentReportsQueue from "./components/ContentMain/IncidentReportsQueue";
+import KycReviewQueue from "./components/ContentMain/KycReviewQueue";
 
 // ==========================================
 // 1. COMPONENTS BẢO VỆ ROUTE
@@ -16,7 +26,7 @@ import ApproveUsers from './components/ContentMain/ApproveUsers';
 const ProtectedRoute = () => {
   // LƯU Ý: Cần đảm bảo bên trang Login.jsx đã lưu với key 'accessToken'
   // Ví dụ: localStorage.setItem('accessToken', token);
-  const token = sessionStorage.getItem('accessToken');
+  const token = sessionStorage.getItem("accessToken");
 
   if (!token) {
     return <Navigate to="/login" replace />;
@@ -26,7 +36,7 @@ const ProtectedRoute = () => {
 
 // Kiểm tra: Nếu ĐÃ đăng nhập rồi thì không cho vào trang Login nữa -> Đẩy về Home
 const PublicRoute = () => {
-  const token = sessionStorage.getItem('accessToken');
+  const token = sessionStorage.getItem("accessToken");
 
   if (token) {
     return <Navigate to="/" replace />;
@@ -40,9 +50,9 @@ const PublicRoute = () => {
 
 const MainLayout = () => {
   return (
-    <div className='flex min-h-screen w-full overflow-hidden bg-secondary font-bai'>
+    <div className="flex min-h-screen w-full overflow-hidden bg-secondary font-bai">
       <Sidebar />
-      <main className='flex-1'>
+      <main className="flex-1">
         <Outlet />
       </main>
     </div>
@@ -62,7 +72,6 @@ function App() {
         {/* --- NHÓM ROUTE CẦN ĐĂNG NHẬP (Dashboard) --- */}
         {/* Dùng ProtectedRoute bao quanh để chặn người lạ */}
         <Route element={<ProtectedRoute />}>
-
           <Route path="/" element={<MainLayout />}>
             {/* Index: Mặc định vào Content khi truy cập "/" */}
             <Route index element={<Content />} />
@@ -70,9 +79,14 @@ function App() {
             <Route path="account" element={<Account />} />
             <Route path="approve-vehicles" element={<ApproveVehicles />} />
             <Route path="approve-users" element={<ApproveUsers />} />
-
+            <Route path="kyc-review" element={<KycReviewQueue />} />
+            <Route path="handover-review" element={<HandoverReviewQueue />} />
+            <Route path="incident-reports" element={<IncidentReportsQueue />} />
+            <Route
+              path="financial-operations"
+              element={<FinancialOperations />}
+            />
           </Route>
-
         </Route>
 
         {/* Route 404: Nếu nhập đường dẫn linh tinh thì quay về login hoặc trang chủ */}

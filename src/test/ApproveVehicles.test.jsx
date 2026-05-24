@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ApproveVehicles from '../components/ContentMain/ApproveVehicles';
 import adminService from '../Service/adminService';
@@ -24,7 +24,13 @@ describe('ApproveVehicles Component (UC-10)', () => {
             brand: "VINFAST",
             model: "Klara S",
             plate_number: "51A-99887",
-            images: ["https://example.com/klara.jpg"]
+            images: ["https://example.com/klara.jpg"],
+            first_registration_year: 2024,
+            condition: "GOOD",
+            battery_type: "REMOVABLE",
+            battery_health: 92,
+            battery_cycle_count: 180,
+            battery_last_serviced_at: "2026-05-01T00:00:00.000Z"
           },
           owner: { full_name: "Momo Owner", email: "momo@test.com" },
           status: "PENDING_APPROVAL"
@@ -53,6 +59,8 @@ describe('ApproveVehicles Component (UC-10)', () => {
     const brand = await screen.findByText('VINFAST');
     expect(brand).toBeInTheDocument();
     expect(screen.getByText('51A-99887')).toBeInTheDocument();
+    expect(screen.getByText('Tình trạng: Tốt')).toBeInTheDocument();
+    expect(screen.getByText('Sức khỏe pin: 92%')).toBeInTheDocument();
   });
 
   it('Phải gọi API updateVehicleStatus khi nhấn Duyệt', async () => {
