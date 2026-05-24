@@ -27,7 +27,66 @@ const categoryLabel = {
   OTHER: "Khác",
 };
 
+const claimStatusLabel = {
+  NO_CLAIM: "Chưa có claim",
+  OPEN: "Mới mở",
+  UNDER_REVIEW: "Đang xét duyệt",
+  AWAITING_CHARGE_REVIEW: "Chờ duyệt phí",
+  AWAITING_DEPOSIT_DECISION: "Chờ quyết định cọc",
+  AWAITING_PAYOUT: "Chờ payout",
+  RESOLVED: "Đã xử lý",
+};
+
+const claimStatusClass = {
+  NO_CLAIM: "bg-gray-500/10 text-gray-300",
+  OPEN: "bg-yellow-500/10 text-yellow-300",
+  UNDER_REVIEW: "bg-blue-500/10 text-blue-300",
+  AWAITING_CHARGE_REVIEW: "bg-orange-500/10 text-orange-300",
+  AWAITING_DEPOSIT_DECISION: "bg-orange-500/10 text-orange-300",
+  AWAITING_PAYOUT: "bg-purple-500/10 text-purple-300",
+  RESOLVED: "bg-green-500/10 text-green-300",
+};
+
+const claimSlaLabel = {
+  ON_TRACK: "Đúng hạn",
+  AT_RISK: "Sắp trễ",
+  OVERDUE: "Quá hạn",
+  COMPLETED: "Hoàn tất",
+};
+
+const claimSlaClass = {
+  ON_TRACK: "bg-blue-500/10 text-blue-200",
+  AT_RISK: "bg-yellow-500/10 text-yellow-200",
+  OVERDUE: "bg-red-500/10 text-red-200",
+  COMPLETED: "bg-green-500/10 text-green-200",
+};
+
+const claimCaseStatusLabel = {
+  OPEN: "Case mở",
+  UNDER_REVIEW: "Đang review",
+  PENDING_SECOND_REVIEW: "Chờ duyệt lần 2",
+  APPROVED: "Đã duyệt",
+  REJECTED: "Đã bác bỏ",
+  RESOLVED: "Đã xử lý",
+  CANCELLED: "Đã hủy",
+};
+
+const claimOutcomeLabel = {
+  OWNER_CLAIM_APPROVED: "Duyệt claim owner",
+  OWNER_CLAIM_PARTIALLY_APPROVED: "Duyệt một phần",
+  OWNER_CLAIM_REJECTED: "Bác claim owner",
+  DEPOSIT_RELEASE_APPROVED: "Duyệt hoàn cọc",
+  PAYOUT_RELEASE_APPROVED: "Duyệt payout",
+  NO_ACTION_REQUIRED: "Không cần xử lý",
+};
+
 const formatId = (id) => (id ? `#${id.slice(0, 8)}` : "-");
+
+const money = new Intl.NumberFormat("vi-VN", {
+  style: "currency",
+  currency: "VND",
+  maximumFractionDigits: 0,
+});
 
 const formatDateTime = (value) =>
   value
@@ -36,6 +95,15 @@ const formatDateTime = (value) =>
         timeStyle: "short",
       }).format(new Date(value))
     : "-";
+
+const formatMinutes = (value) => {
+  const minutes = Math.max(Number(value) || 0, 0);
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (hours <= 0) return `${remainder} phút`;
+  if (remainder === 0) return `${hours} giờ`;
+  return `${hours} giờ ${remainder} phút`;
+};
 
 const parseJsonObject = (value) => {
   if (!value) return {};
@@ -49,6 +117,124 @@ const parseJsonObject = (value) => {
   return value;
 };
 
+const claimBlockerText = (blocker) => {
+  const count = blocker.count || 0;
+  switch (blocker.code) {
+    case "UNRESOLVED_INCIDENTS":
+      return `${count} sự cố đang mở hoặc đang xét duyệt`;
+    case "UNRESOLVED_POST_TRIP_CHARGES":
+      return `${count} phí sau chuyến cần duyệt`;
+    case "APPROVED_CHARGES_NOT_CAPTURED":
+      return `${count} phí đã duyệt chưa khấu trừ hoặc miễn`;
+    case "DEPOSIT_DECISION_PENDING":
+      return "Tiền cọc đang chờ quyết định";
+    case "OWNER_PAYOUT_ON_HOLD":
+      return "Payout owner đang bị giữ";
+    default:
+      return blocker.label || blocker.code;
+  }
+};
+
+const claimActorLabel = (actor) => {
+  switch ((actor || "").toUpperCase()) {
+    case "ADMIN":
+      return "Admin";
+    case "OWNER":
+      return "Owner";
+    case "RENTER":
+      return "Renter";
+    default:
+      return actor || "-";
+  }
+};
+
+const claimTimelineText = (event) => {
+  switch (event.type) {
+    case "BOOKING_CREATED":
+      return "Booking được tạo";
+    case "PAYMENT_COMPLETED":
+      return "Thanh toán hoàn tất";
+    case "TRIP_COMPLETED":
+      return "Chuyến đi hoàn tất";
+    case "DEPOSIT_HELD":
+      return "Tiền cọc được giữ";
+    case "DEPOSIT_DISPUTED":
+      return "Tiền cọc chuyển tranh chấp";
+    case "DEPOSIT_RELEASED":
+      return "Tiền cọc đã hoàn";
+    case "POST_TRIP_CHARGE_CREATED":
+      return "Phí sau chuyến được tạo";
+    case "POST_TRIP_CHARGE_REVIEWED":
+      return "Phí sau chuyến được duyệt";
+    case "INCIDENT_CREATED":
+      return "Sự cố được báo cáo";
+    case "INCIDENT_REVIEWED":
+      return "Sự cố được xem xét";
+    case "INCIDENT_RESOLVED":
+      return "Sự cố được kết luận";
+    case "OWNER_PAYOUT_CREATED":
+      return "Payout owner được chuẩn bị";
+    case "OWNER_PAYOUT_PROCESSED":
+      return "Payout owner bắt đầu xử lý";
+    case "OWNER_PAYOUT_COMPLETED":
+      return "Payout owner hoàn tất";
+    case "EVIDENCE_ANNOTATED":
+      return "Evidence được ghi chú";
+    default:
+      return event.label || event.type;
+  }
+};
+
+const annotationTargetKey = (target) =>
+  `${target.targetType}:${target.targetId}`;
+
+const buildAnnotationTargets = (summary) => {
+  if (!summary) return [];
+
+  const targets = [];
+  const seen = new Set();
+  const addTarget = (target) => {
+    if (!target.targetId) return;
+    const key = annotationTargetKey(target);
+    if (seen.has(key)) return;
+    seen.add(key);
+    targets.push({ ...target, key });
+  };
+
+  (summary.incidents || []).forEach((incident) => {
+    addTarget({
+      targetType: "INCIDENT_REPORT",
+      targetId: incident.id,
+      label: `Sự cố ${categoryLabel[incident.category] || incident.category} ${formatId(incident.id)}`,
+    });
+
+    const evidence = parseJsonObject(incident.evidence);
+    (evidence.handoverPhotos || []).forEach((photo, index) => {
+      addTarget({
+        targetType: "HANDOVER_PHOTO",
+        targetId: photo.id,
+        label: `Ảnh bàn giao ${photo.photoType || index + 1} ${formatId(photo.id)}`,
+      });
+    });
+  });
+
+  (summary.charges || []).forEach((charge) => {
+    addTarget({
+      targetType: "POST_TRIP_CHARGE",
+      targetId: charge.id,
+      label: `Phí ${charge.type} ${formatId(charge.id)}`,
+    });
+  });
+
+  return targets;
+};
+
+const parseAnnotationTags = (value) =>
+  value
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
 const Pill = ({ value, tone = "status" }) => (
   <span
     className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
@@ -58,6 +244,26 @@ const Pill = ({ value, tone = "status" }) => (
     }`}
   >
     {value}
+  </span>
+);
+
+const ClaimStatusPill = ({ value }) => (
+  <span
+    className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+      claimStatusClass[value] || "bg-white/10 text-white"
+    }`}
+  >
+    {claimStatusLabel[value] || value}
+  </span>
+);
+
+const ClaimSlaPill = ({ sla }) => (
+  <span
+    className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+      claimSlaClass[sla?.status] || "bg-white/10 text-white"
+    }`}
+  >
+    {claimSlaLabel[sla?.status] || "Chưa có SLA"}
   </span>
 );
 
@@ -113,7 +319,33 @@ const IncidentReportsQueue = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
+  const [claimSummary, setClaimSummary] = useState(null);
+  const [claimLoadingId, setClaimLoadingId] = useState(null);
+  const [claimCaseBusyId, setClaimCaseBusyId] = useState(null);
   const [error, setError] = useState("");
+  const [claimError, setClaimError] = useState("");
+  const [annotationBusy, setAnnotationBusy] = useState(false);
+  const [annotationForm, setAnnotationForm] = useState({
+    targetKey: "",
+    note: "",
+    tags: "",
+  });
+
+  const annotationTargets = useMemo(
+    () => buildAnnotationTargets(claimSummary),
+    [claimSummary],
+  );
+
+  const annotationTargetLabels = useMemo(
+    () =>
+      new Map(
+        annotationTargets.map((target) => [
+          annotationTargetKey(target),
+          target.label,
+        ]),
+      ),
+    [annotationTargets],
+  );
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -132,8 +364,25 @@ const IncidentReportsQueue = () => {
     loadQueue();
   }, [loadQueue]);
 
+  useEffect(() => {
+    if (!claimSummary) return;
+    setAnnotationForm((current) => {
+      const hasCurrentTarget = annotationTargets.some(
+        (target) => target.key === current.targetKey,
+      );
+      return {
+        ...current,
+        targetKey: hasCurrentTarget
+          ? current.targetKey
+          : annotationTargets[0]?.key || "",
+      };
+    });
+  }, [annotationTargets, claimSummary]);
+
   const totals = useMemo(() => {
-    const critical = items.filter((item) => item.severity === "CRITICAL").length;
+    const critical = items.filter(
+      (item) => item.severity === "CRITICAL",
+    ).length;
     const evidenceRequired = items.filter(
       (item) => parseJsonObject(item.requiredEvidence).photoRequired,
     ).length;
@@ -160,6 +409,87 @@ const IncidentReportsQueue = () => {
       alert(err.message || "Không thể cập nhật sự cố");
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const loadClaimSummary = async (bookingId) => {
+    setClaimLoadingId(bookingId);
+    setClaimError("");
+    try {
+      const result = await adminService.getBookingClaimSummary(bookingId);
+      setClaimSummary(result.data || result);
+    } catch (err) {
+      setClaimError(err.message || "Không thể tải hồ sơ claim");
+    } finally {
+      setClaimLoadingId(null);
+    }
+  };
+
+  const createClaimCase = async (bookingId) => {
+    setClaimCaseBusyId(`create-${bookingId}`);
+    setClaimError("");
+    try {
+      await adminService.createOrRefreshClaimCase(bookingId);
+      await loadClaimSummary(bookingId);
+    } catch (err) {
+      setClaimError(err.message || "Không thể tạo hồ sơ claim");
+    } finally {
+      setClaimCaseBusyId(null);
+    }
+  };
+
+  const reviewClaimCase = async (claimCase, decision) => {
+    const notes = window.prompt(
+      `${claimOutcomeLabel[decision] || decision} - ghi chú review`,
+      "",
+    );
+    if (notes === null) return;
+
+    setClaimCaseBusyId(`review-${claimCase.id}`);
+    setClaimError("");
+    try {
+      await adminService.reviewClaimCase(claimCase.id, { decision, notes });
+      await loadClaimSummary(claimCase.bookingId);
+    } catch (err) {
+      setClaimError(err.message || "Không thể duyệt hồ sơ claim");
+    } finally {
+      setClaimCaseBusyId(null);
+    }
+  };
+
+  const submitEvidenceAnnotation = async (event) => {
+    event.preventDefault();
+    if (!claimSummary) return;
+
+    const target = annotationTargets.find(
+      (item) => item.key === annotationForm.targetKey,
+    );
+    const note = annotationForm.note.trim();
+    if (!target || !note) {
+      alert("Chọn evidence và nhập ghi chú trước khi lưu");
+      return;
+    }
+
+    setAnnotationBusy(true);
+    setClaimError("");
+    try {
+      await adminService.createEvidenceAnnotation(claimSummary.bookingId, {
+        targetType: target.targetType,
+        targetId: target.targetId,
+        claimCaseId: claimSummary.claimCase?.id,
+        note,
+        tags: parseAnnotationTags(annotationForm.tags),
+      });
+      setAnnotationForm((current) => ({
+        ...current,
+        note: "",
+        tags: "",
+      }));
+      await loadClaimSummary(claimSummary.bookingId);
+    } catch (err) {
+      setClaimError(err.message || "Không thể lưu ghi chú evidence");
+    } finally {
+      setAnnotationBusy(false);
     }
   };
 
@@ -217,6 +547,366 @@ const IncidentReportsQueue = () => {
           <p className="text-2xl font-bold mt-2">{totals.evidenceRequired}</p>
         </div>
       </div>
+
+      {claimError && (
+        <div className="mb-5 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {claimError}
+        </div>
+      )}
+
+      {claimSummary && (
+        <section className="mb-6 rounded-xl border border-pumpkin/20 bg-primary p-5 shadow-2xl">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-gray-400">
+                Hồ sơ claim {formatId(claimSummary.bookingId)}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <ClaimStatusPill value={claimSummary.status} />
+                <span className="text-xs text-gray-400">
+                  {claimSummary.blockers?.length || 0} blocker ·{" "}
+                  {claimSummary.nextActions?.length || 0} bước tiếp theo
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => setClaimSummary(null)}
+              className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-300 hover:bg-white/10"
+            >
+              Đóng
+            </button>
+          </div>
+
+          <div className="mt-5 rounded-lg border border-white/5 bg-white/[0.03] p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-widest text-gray-500">
+                  Four-eyes claim case
+                </p>
+                {claimSummary.claimCase ? (
+                  <>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-gray-200">
+                        {claimSummary.claimCase.caseNumber}
+                      </span>
+                      <span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[10px] font-bold text-blue-200">
+                        {claimCaseStatusLabel[claimSummary.claimCase.status] ||
+                          claimSummary.claimCase.status}
+                      </span>
+                      <ClaimSlaPill sla={claimSummary.claimCase.sla} />
+                      {claimSummary.claimCase.outcome && (
+                        <span className="rounded-full bg-green-500/10 px-2.5 py-1 text-[10px] font-bold text-green-200">
+                          {claimOutcomeLabel[claimSummary.claimCase.outcome] ||
+                            claimSummary.claimCase.outcome}
+                        </span>
+                      )}
+                    </div>
+                    {claimSummary.claimCase.sla?.dueAt && (
+                      <p className="mt-2 text-xs text-gray-500">
+                        SLA: {formatDateTime(claimSummary.claimCase.sla.dueAt)}
+                        {claimSummary.claimCase.sla.status === "OVERDUE"
+                          ? ` · trễ ${formatMinutes(claimSummary.claimCase.sla.overdueMinutes)}`
+                          : ` · còn ${formatMinutes(claimSummary.claimCase.sla.remainingMinutes)}`}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-400">
+                    Chưa có case bền vững cho booking này.
+                  </p>
+                )}
+                {claimSummary.claimCase?.summary && (
+                  <p className="mt-2 text-xs text-gray-400">
+                    {claimSummary.claimCase.summary}
+                  </p>
+                )}
+              </div>
+              <button
+                disabled={
+                  claimCaseBusyId === `create-${claimSummary.bookingId}`
+                }
+                onClick={() => createClaimCase(claimSummary.bookingId)}
+                className="rounded-md border border-pumpkin/30 bg-pumpkin/10 px-3 py-1.5 text-xs font-bold text-pumpkin hover:bg-pumpkin hover:text-white disabled:opacity-60"
+              >
+                {claimSummary.claimCase ? "Cập nhật case" : "Tạo case"}
+              </button>
+            </div>
+
+            {claimSummary.claimCase && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {[
+                  "OWNER_CLAIM_APPROVED",
+                  "OWNER_CLAIM_PARTIALLY_APPROVED",
+                  "OWNER_CLAIM_REJECTED",
+                  "DEPOSIT_RELEASE_APPROVED",
+                  "PAYOUT_RELEASE_APPROVED",
+                  "NO_ACTION_REQUIRED",
+                ].map((decision) => (
+                  <button
+                    key={decision}
+                    disabled={
+                      claimCaseBusyId ===
+                        `review-${claimSummary.claimCase.id}` ||
+                      [
+                        "APPROVED",
+                        "REJECTED",
+                        "RESOLVED",
+                        "CANCELLED",
+                      ].includes(claimSummary.claimCase.status)
+                    }
+                    onClick={() =>
+                      reviewClaimCase(claimSummary.claimCase, decision)
+                    }
+                    className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {claimOutcomeLabel[decision]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+            <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
+              <p className="text-[11px] uppercase tracking-widest text-gray-500">
+                Sự cố chưa xong
+              </p>
+              <p className="mt-1 text-lg font-bold">
+                {claimSummary.totals?.unresolvedIncidentCount || 0}
+              </p>
+            </div>
+            <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
+              <p className="text-[11px] uppercase tracking-widest text-gray-500">
+                Phí chờ xử lý
+              </p>
+              <p className="mt-1 text-lg font-bold text-yellow-200">
+                {money.format(
+                  (claimSummary.totals?.pendingChargeAmount || 0) +
+                    (claimSummary.totals?.approvedChargeAmount || 0),
+                )}
+              </p>
+            </div>
+            <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
+              <p className="text-[11px] uppercase tracking-widest text-gray-500">
+                Cọc có thể hoàn
+              </p>
+              <p className="mt-1 text-lg font-bold text-green-200">
+                {money.format(
+                  claimSummary.totals?.releasableDepositAmount || 0,
+                )}
+              </p>
+            </div>
+            <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
+              <p className="text-[11px] uppercase tracking-widest text-gray-500">
+                Payout owner
+              </p>
+              <p className="mt-1 text-lg font-bold text-blue-200">
+                {money.format(claimSummary.totals?.ownerPayoutAmount || 0)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                Blocker
+              </p>
+              <div className="mt-3 space-y-2">
+                {(claimSummary.blockers || []).length > 0 ? (
+                  claimSummary.blockers.map((blocker) => (
+                    <p
+                      key={blocker.code}
+                      className="rounded-lg border border-yellow-500/10 bg-yellow-500/5 px-3 py-2 text-xs text-yellow-100"
+                    >
+                      {claimBlockerText(blocker)}
+                    </p>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-500">Không còn blocker.</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                Bước tiếp theo
+              </p>
+              <div className="mt-3 space-y-2">
+                {(claimSummary.nextActions || []).length > 0 ? (
+                  claimSummary.nextActions.map((action) => (
+                    <p
+                      key={`${action.actor}-${action.action}`}
+                      className="rounded-lg border border-blue-500/10 bg-blue-500/5 px-3 py-2 text-xs text-blue-100"
+                    >
+                      {claimActorLabel(action.actor)}: {action.action}
+                    </p>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-500">Không cần thao tác.</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                Dòng xử lý
+              </p>
+              <div className="mt-3 space-y-2">
+                {(claimSummary.timeline || [])
+                  .slice(-4)
+                  .reverse()
+                  .map((event) => (
+                    <p
+                      key={`${event.type}-${event.occurredAt}`}
+                      className="text-xs text-gray-300"
+                    >
+                      <span className="text-gray-500">
+                        {formatDateTime(event.occurredAt)}
+                      </span>{" "}
+                      {claimTimelineText(event)}
+                    </p>
+                  ))}
+                {(claimSummary.timeline || []).length === 0 && (
+                  <p className="text-xs text-gray-500">Chưa có timeline.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <form
+              onSubmit={submitEvidenceAnnotation}
+              className="rounded-lg border border-white/5 bg-white/[0.03] p-4"
+            >
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                Ghi chú evidence
+              </p>
+              <label
+                htmlFor="evidence-target"
+                className="mt-4 block text-[11px] font-bold uppercase tracking-widest text-gray-500"
+              >
+                Evidence
+              </label>
+              <select
+                id="evidence-target"
+                value={annotationForm.targetKey}
+                onChange={(event) =>
+                  setAnnotationForm((current) => ({
+                    ...current,
+                    targetKey: event.target.value,
+                  }))
+                }
+                disabled={annotationTargets.length === 0}
+                className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+              >
+                {annotationTargets.length === 0 ? (
+                  <option value="">Không có evidence để ghi chú</option>
+                ) : (
+                  annotationTargets.map((target) => (
+                    <option key={target.key} value={target.key}>
+                      {target.label}
+                    </option>
+                  ))
+                )}
+              </select>
+
+              <label
+                htmlFor="evidence-note"
+                className="mt-4 block text-[11px] font-bold uppercase tracking-widest text-gray-500"
+              >
+                Ghi chú
+              </label>
+              <textarea
+                id="evidence-note"
+                value={annotationForm.note}
+                onChange={(event) =>
+                  setAnnotationForm((current) => ({
+                    ...current,
+                    note: event.target.value,
+                  }))
+                }
+                rows={3}
+                maxLength={1000}
+                className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white placeholder:text-gray-600"
+                placeholder="Ví dụ: ảnh checkout khớp vị trí xước trên báo cáo owner"
+              />
+
+              <label
+                htmlFor="evidence-tags"
+                className="mt-4 block text-[11px] font-bold uppercase tracking-widest text-gray-500"
+              >
+                Tag
+              </label>
+              <input
+                id="evidence-tags"
+                value={annotationForm.tags}
+                onChange={(event) =>
+                  setAnnotationForm((current) => ({
+                    ...current,
+                    tags: event.target.value,
+                  }))
+                }
+                className="mt-2 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white placeholder:text-gray-600"
+                placeholder="damage, checkout, rõ ảnh"
+              />
+
+              <button
+                type="submit"
+                disabled={annotationBusy || annotationTargets.length === 0}
+                className="mt-4 rounded-md bg-pumpkin px-4 py-2 text-xs font-bold text-white hover:bg-pumpkin/80 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {annotationBusy ? "Đang lưu" : "Lưu ghi chú"}
+              </button>
+            </form>
+
+            <div className="rounded-lg border border-white/5 bg-white/[0.03] p-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                Ghi chú đã lưu
+              </p>
+              <div className="mt-4 space-y-3">
+                {(claimSummary.evidenceAnnotations || []).length > 0 ? (
+                  claimSummary.evidenceAnnotations.map((annotation) => (
+                    <div
+                      key={annotation.id}
+                      className="rounded-lg border border-white/5 bg-black/10 px-3 py-2"
+                    >
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                        <span>
+                          {annotationTargetLabels.get(
+                            `${annotation.targetType}:${annotation.targetId}`,
+                          ) ||
+                            `${annotation.targetType} ${formatId(annotation.targetId)}`}
+                        </span>
+                        <span>{formatDateTime(annotation.createdAt)}</span>
+                        {annotation.author?.fullName && (
+                          <span>{annotation.author.fullName}</span>
+                        )}
+                      </div>
+                      <p className="mt-2 text-sm text-gray-200">
+                        {annotation.note}
+                      </p>
+                      {(annotation.tags || []).length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {annotation.tags.map((tag) => (
+                            <span
+                              key={`${annotation.id}-${tag}`}
+                              className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-gray-300"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-500">
+                    Chưa có ghi chú evidence.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="bg-primary rounded-xl border border-white/5 overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
@@ -299,12 +989,19 @@ const IncidentReportsQueue = () => {
                     </td>
                     <td className="p-5">
                       <div className="flex flex-wrap gap-2">
+                        <button
+                          disabled={claimLoadingId === item.bookingId}
+                          onClick={() => loadClaimSummary(item.bookingId)}
+                          className="px-3 py-1.5 rounded-md bg-pumpkin/20 text-pumpkin hover:bg-pumpkin hover:text-white text-xs font-bold"
+                        >
+                          {claimLoadingId === item.bookingId
+                            ? "Đang tải"
+                            : "Xem claim"}
+                        </button>
                         {item.status === "OPEN" && (
                           <button
                             disabled={busyId === item.id}
-                            onClick={() =>
-                              reviewIncident(item, "UNDER_REVIEW")
-                            }
+                            onClick={() => reviewIncident(item, "UNDER_REVIEW")}
                             className="px-3 py-1.5 rounded-md bg-blue-500/20 text-blue-300 hover:bg-blue-500 hover:text-white text-xs font-bold"
                           >
                             Đang xem
@@ -354,6 +1051,16 @@ const IncidentReportsQueue = () => {
 Pill.propTypes = {
   value: PropTypes.string.isRequired,
   tone: PropTypes.oneOf(["status", "severity"]),
+};
+
+ClaimStatusPill.propTypes = {
+  value: PropTypes.string.isRequired,
+};
+
+ClaimSlaPill.propTypes = {
+  sla: PropTypes.shape({
+    status: PropTypes.string,
+  }),
 };
 
 EvidenceLinks.propTypes = {

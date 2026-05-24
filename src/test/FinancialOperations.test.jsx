@@ -9,6 +9,8 @@ vi.mock("../Service/adminService", () => ({
     reviewPostTripCharge: vi.fn(),
     captureApprovedCharges: vi.fn(),
     releaseDeposit: vi.fn(),
+    createOrRefreshOwnerPayout: vi.fn(),
+    updateOwnerPayoutStatus: vi.fn(),
   },
 }));
 
@@ -17,6 +19,7 @@ describe("FinancialOperations", () => {
     status: "success",
     data: {
       deposits: [],
+      payouts: [],
       charges: [
         {
           id: "charge-1",
@@ -77,6 +80,7 @@ describe("FinancialOperations", () => {
       status: "success",
       data: {
         deposits: [],
+        payouts: [],
         charges: [
           {
             id: "charge-2",
@@ -101,6 +105,50 @@ describe("FinancialOperations", () => {
     await waitFor(() => {
       expect(adminService.captureApprovedCharges).toHaveBeenCalledWith(
         "booking-approved",
+      );
+    });
+  });
+
+  it("lets admin complete a ready owner payout", async () => {
+    adminService.getFinancialQueue.mockResolvedValue({
+      status: "success",
+      data: {
+        deposits: [],
+        charges: [],
+        payouts: [
+          {
+            id: "payout-1",
+            bookingId: "booking-payout",
+            status: "PROCESSING",
+            ownerRentalAmount: 85000,
+            postTripChargeAmount: 40000,
+            payoutAmount: 125000,
+          },
+        ],
+      },
+    });
+    adminService.updateOwnerPayoutStatus.mockResolvedValue({
+      status: "success",
+    });
+    window.prompt = vi
+      .fn()
+      .mockReturnValueOnce("BANK-TXN-1")
+      .mockReturnValueOnce("Paid by bank transfer");
+
+    render(<FinancialOperations />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Hoàn tất payout" }),
+    );
+
+    await waitFor(() => {
+      expect(adminService.updateOwnerPayoutStatus).toHaveBeenCalledWith(
+        "payout-1",
+        {
+          status: "COMPLETED",
+          externalReference: "BANK-TXN-1",
+          notes: "Paid by bank transfer",
+        },
       );
     });
   });

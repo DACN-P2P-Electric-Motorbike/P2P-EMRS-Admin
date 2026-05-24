@@ -146,6 +146,29 @@ const adminService = {
     }
   },
 
+  createOrRefreshOwnerPayout: async (bookingId) => {
+    try {
+      const response = await api.post(
+        `/financial/bookings/${bookingId}/payout`,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi cập nhật payout owner" };
+    }
+  },
+
+  updateOwnerPayoutStatus: async (payoutId, payload) => {
+    try {
+      const response = await api.patch(
+        `/financial/payouts/${payoutId}/status`,
+        payload,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi xử lý payout owner" };
+    }
+  },
+
   getIncidentQueue: async (limit = 50) => {
     try {
       const response = await api.get("/incidents/admin/queue", {
@@ -154,6 +177,74 @@ const adminService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Lỗi lấy hàng chờ sự cố" };
+    }
+  },
+
+  getBookingClaimSummary: async (bookingId) => {
+    try {
+      const response = await api.get(
+        `/incidents/bookings/${bookingId}/claim-summary`,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi lấy hồ sơ claim" };
+    }
+  },
+
+  getEvidenceAnnotations: async (bookingId) => {
+    try {
+      const response = await api.get(
+        `/incidents/bookings/${bookingId}/evidence-annotations`,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi lấy ghi chú evidence" };
+    }
+  },
+
+  createEvidenceAnnotation: async (bookingId, payload) => {
+    try {
+      const response = await api.post(
+        `/incidents/bookings/${bookingId}/evidence-annotations`,
+        payload,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi tạo ghi chú evidence" };
+    }
+  },
+
+  createOrRefreshClaimCase: async (bookingId) => {
+    try {
+      const response = await api.post(
+        `/incidents/bookings/${bookingId}/claim-case`,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi tạo hồ sơ claim" };
+    }
+  },
+
+  reviewClaimCase: async (claimCaseId, payload) => {
+    try {
+      const response = await api.patch(
+        `/incidents/claim-cases/${claimCaseId}/review`,
+        payload,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi duyệt hồ sơ claim" };
+    }
+  },
+
+  getClaimCases: async (params = {}) => {
+    try {
+      const response = await api.get("/incidents/admin/claim-cases", {
+        params,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi lấy danh sách claim" };
     }
   },
 
