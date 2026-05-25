@@ -55,12 +55,31 @@ const slaClass = {
   COMPLETED: "bg-green-500/10 text-green-200",
 };
 
+const stageLabel = {
+  FIRST_REVIEW: "Review lần 1",
+  SECOND_REVIEW: "Review lần 2",
+  CLOSED: "Đã chốt",
+};
+
 const slaFilters = [
   { value: "", label: "Tất cả SLA" },
   { value: "OVERDUE", label: "Quá hạn" },
   { value: "AT_RISK", label: "Sắp trễ" },
   { value: "ON_TRACK", label: "Đúng hạn" },
   { value: "COMPLETED", label: "Hoàn tất" },
+];
+
+const stageFilters = [
+  { value: "", label: "Tất cả giai đoạn" },
+  { value: "FIRST_REVIEW", label: "Review lần 1" },
+  { value: "SECOND_REVIEW", label: "Review lần 2" },
+  { value: "CLOSED", label: "Đã chốt" },
+];
+
+const assignmentFilters = [
+  { value: "", label: "Tất cả phân công" },
+  { value: "MINE", label: "Của tôi" },
+  { value: "UNASSIGNED", label: "Chưa giao" },
 ];
 
 const reviewDecisions = [
@@ -75,6 +94,7 @@ const reviewDecisions = [
 const finalStatuses = ["APPROVED", "REJECTED", "RESOLVED", "CANCELLED"];
 
 const formatId = (id) => (id ? `#${id.slice(0, 8)}` : "-");
+const isActiveCase = (item) => !finalStatuses.includes(item.status);
 
 const formatDateTime = (value) =>
   value
@@ -91,6 +111,12 @@ const formatMinutes = (value) => {
   if (hours <= 0) return `${remainder} phút`;
   if (remainder === 0) return `${hours} giờ`;
   return `${hours} giờ ${remainder} phút`;
+};
+
+const formatHours = (value) => {
+  const hours = Number(value);
+  if (!Number.isFinite(hours) || hours <= 0) return "-";
+  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)} giờ`;
 };
 
 const StatusPill = ({ value }) => (
@@ -135,6 +161,10 @@ const ClaimCasesQueue = () => {
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState("");
   const [slaStatus, setSlaStatus] = useState("");
+  const [slaStage, setSlaStage] = useState("");
+  const [assignment, setAssignment] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
@@ -146,14 +176,21 @@ const ClaimCasesQueue = () => {
       const params = { limit: 100 };
       if (status) params.status = status;
       if (slaStatus) params.slaStatus = slaStatus;
-      const result = await adminService.getClaimCases(params);
+      if (slaStage) params.slaStage = slaStage;
+      if (assignment) params.assignment = assignment;
+      const [result, summaryResult] = await Promise.all([
+        adminService.getClaimCases(params),
+        adminService.getClaimCaseSummary(),
+      ]);
       setItems(result.data || []);
+      setSummary(summaryResult.data || null);
+      setSelectedIds([]);
     } catch (err) {
       setError(err.message || "Không thể tải hàng chờ claim");
     } finally {
       setLoading(false);
     }
-  }, [slaStatus, status]);
+  }, [assignment, slaStage, slaStatus, status]);
 
   useEffect(() => {
     loadQueue();
@@ -163,24 +200,69 @@ const ClaimCasesQueue = () => {
     const pendingSecond = items.filter(
       (item) => item.status === "PENDING_SECOND_REVIEW",
     ).length;
-    const active = items.filter(
-      (item) => !finalStatuses.includes(item.status),
+    const firstReview = items.filter(
+      (item) => item.sla?.stage === "FIRST_REVIEW",
     ).length;
+    const secondReview = items.filter(
+      (item) => item.sla?.stage === "SECOND_REVIEW",
+    ).length;
+    const active = items.filter(isActiveCase).length;
     const overdue = items.filter(
       (item) => item.sla?.status === "OVERDUE",
     ).length;
     const atRisk = items.filter(
       (item) => item.sla?.status === "AT_RISK",
     ).length;
+    const unassigned = items.filter(
+      (item) => isActiveCase(item) && !item.assignedAdminId,
+    ).length;
 
     return {
       total: items.length,
       active,
       pendingSecond,
+      firstReview,
+      secondReview,
       overdue,
       atRisk,
+      unassigned,
     };
   }, [items]);
+
+  const activeItems = useMemo(() => items.filter(isActiveCase), [items]);
+  const selectedItems = useMemo(
+    () =>
+      items.filter(
+        (item) => isActiveCase(item) && selectedIds.includes(item.id),
+      ),
+    [items, selectedIds],
+  );
+  const allActiveSelected =
+    activeItems.length > 0 &&
+    activeItems.every((item) => selectedIds.includes(item.id));
+  const dashboard = summary || {
+    total: totals.total,
+    active: totals.active,
+    assignedToMe: 0,
+    unassigned: totals.unassigned,
+    firstReview: totals.firstReview,
+    secondReview: totals.secondReview,
+    overdue: totals.overdue,
+    atRisk: totals.atRisk,
+  };
+  const slaPolicy = dashboard.policy;
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allActiveSelected ? [] : activeItems.map((item) => item.id));
+  };
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((selectedId) => selectedId !== id)
+        : [...current, id],
+    );
+  };
 
   const reviewCase = async (claimCase, decision) => {
     const notes = window.prompt(
@@ -195,6 +277,36 @@ const ClaimCasesQueue = () => {
       await loadQueue();
     } catch (err) {
       alert(err.message || "Không thể duyệt hồ sơ claim");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const updateAssignment = async (claimCase, action) => {
+    setBusyId(`${action}-${claimCase.id}`);
+    try {
+      await adminService.updateClaimCaseAssignment(claimCase.id, { action });
+      await loadQueue();
+    } catch (err) {
+      alert(err.message || "Không thể cập nhật phân công hồ sơ claim");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const updateSelectedAssignments = async (action) => {
+    if (!selectedItems.length) return;
+
+    setBusyId(`BULK-${action}`);
+    try {
+      await Promise.all(
+        selectedItems.map((item) =>
+          adminService.updateClaimCaseAssignment(item.id, { action }),
+        ),
+      );
+      await loadQueue();
+    } catch (err) {
+      alert(err.message || "Không thể cập nhật các hồ sơ claim đã chọn");
     } finally {
       setBusyId(null);
     }
@@ -227,6 +339,20 @@ const ClaimCasesQueue = () => {
           Làm mới
         </button>
       </div>
+
+      {slaPolicy && (
+        <div className="mb-5 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-gray-300">
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-500">
+            Chính sách SLA
+          </p>
+          <p className="mt-1">
+            Lần 1: {formatHours(slaPolicy.firstReviewHours)} · Lần 2:{" "}
+            {formatHours(slaPolicy.secondReviewHours)} · Cảnh báo còn{" "}
+            {formatHours(slaPolicy.atRiskWindowHours)} · Escalation cao sau{" "}
+            {formatHours(slaPolicy.highEscalationOverdueHours)} trễ
+          </p>
+        </div>
+      )}
 
       {error && (
         <div className="mb-5 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
@@ -271,33 +397,81 @@ const ClaimCasesQueue = () => {
             </button>
           ))}
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
+            Giai đoạn
+          </span>
+          {stageFilters.map((filter) => (
+            <button
+              key={filter.value || "all-stage"}
+              onClick={() => setSlaStage(filter.value)}
+              className={`rounded-md border px-3 py-1.5 text-xs font-bold ${
+                slaStage === filter.value
+                  ? "border-pumpkin bg-pumpkin text-white"
+                  : "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
+            Phân công
+          </span>
+          {assignmentFilters.map((filter) => (
+            <button
+              key={filter.value || "all-assignment"}
+              onClick={() => setAssignment(filter.value)}
+              className={`rounded-md border px-3 py-1.5 text-xs font-bold ${
+                assignment === filter.value
+                  ? "border-pumpkin bg-pumpkin text-white"
+                  : "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-5">
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4 xl:grid-cols-8">
         <div className="rounded-xl border border-white/5 bg-primary p-5">
           <p className="text-xs uppercase tracking-widest text-gray-400">
             Tổng case
           </p>
-          <p className="mt-2 text-2xl font-bold">{totals.total}</p>
+          <p className="mt-2 text-2xl font-bold">{dashboard.total}</p>
         </div>
         <div className="rounded-xl border border-white/5 bg-primary p-5">
           <p className="text-xs uppercase tracking-widest text-gray-400">
             Đang mở
           </p>
-          <p className="mt-2 text-2xl font-bold">{totals.active}</p>
+          <p className="mt-2 text-2xl font-bold">{dashboard.active}</p>
         </div>
         <div className="rounded-xl border border-white/5 bg-primary p-5">
           <p className="text-xs uppercase tracking-widest text-gray-400">
-            Chờ lần 2
+            Của tôi
           </p>
-          <p className="mt-2 text-2xl font-bold">{totals.pendingSecond}</p>
+          <p className="mt-2 text-2xl font-bold">{dashboard.assignedToMe}</p>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-primary p-5">
+          <p className="text-xs uppercase tracking-widest text-gray-400">
+            Review lần 1
+          </p>
+          <p className="mt-2 text-2xl font-bold">{dashboard.firstReview}</p>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-primary p-5">
+          <p className="text-xs uppercase tracking-widest text-gray-400">
+            Review lần 2
+          </p>
+          <p className="mt-2 text-2xl font-bold">{dashboard.secondReview}</p>
         </div>
         <div className="rounded-xl border border-white/5 bg-primary p-5">
           <p className="text-xs uppercase tracking-widest text-gray-400">
             Quá hạn
           </p>
           <p className="mt-2 text-2xl font-bold text-red-200">
-            {totals.overdue}
+            {dashboard.overdue}
           </p>
         </div>
         <div className="rounded-xl border border-white/5 bg-primary p-5">
@@ -305,18 +479,67 @@ const ClaimCasesQueue = () => {
             Sắp trễ
           </p>
           <p className="mt-2 text-2xl font-bold text-yellow-200">
-            {totals.atRisk}
+            {dashboard.atRisk}
+          </p>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-primary p-5">
+          <p className="text-xs uppercase tracking-widest text-gray-400">
+            Chưa giao
+          </p>
+          <p className="mt-2 text-2xl font-bold text-gray-200">
+            {dashboard.unassigned}
           </p>
         </div>
       </div>
 
+      {selectedItems.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3">
+          <p className="text-sm font-semibold text-gray-200">
+            Đã chọn {selectedItems.length} case đang mở
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              disabled={busyId === "BULK-ASSIGN_SELF"}
+              onClick={() => updateSelectedAssignments("ASSIGN_SELF")}
+              className="rounded-md border border-pumpkin/30 bg-pumpkin/10 px-3 py-1.5 text-xs font-bold text-pumpkin hover:bg-pumpkin/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Nhận xử lý đã chọn
+            </button>
+            <button
+              disabled={busyId === "BULK-RELEASE"}
+              onClick={() => updateSelectedAssignments("RELEASE")}
+              className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Bỏ nhận đã chọn
+            </button>
+            <button
+              onClick={() => setSelectedIds([])}
+              className="rounded-md border border-white/10 bg-transparent px-3 py-1.5 text-xs font-bold text-gray-400 hover:bg-white/5"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        </div>
+      )}
+
       <section className="overflow-hidden rounded-xl border border-white/5 bg-primary shadow-2xl">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1340px] text-left">
+          <table className="w-full min-w-[1520px] text-left">
             <thead>
               <tr className="border-b border-white/5 text-xs uppercase tracking-widest text-gray-400">
+                <th className="p-5">
+                  <input
+                    type="checkbox"
+                    aria-label="Chọn tất cả case đang mở"
+                    checked={allActiveSelected}
+                    onChange={toggleSelectAll}
+                    disabled={!activeItems.length}
+                    className="h-4 w-4 accent-pumpkin"
+                  />
+                </th>
                 <th className="p-5">Case / Booking</th>
                 <th className="p-5">Trạng thái</th>
+                <th className="p-5">Phụ trách</th>
                 <th className="p-5">SLA</th>
                 <th className="p-5">Người liên quan</th>
                 <th className="p-5">Review</th>
@@ -330,6 +553,16 @@ const ClaimCasesQueue = () => {
                     key={item.id}
                     className="align-top border-b border-white/5 hover:bg-white/5"
                   >
+                    <td className="p-5">
+                      <input
+                        type="checkbox"
+                        aria-label={`Chọn ${item.caseNumber}`}
+                        checked={selectedIds.includes(item.id)}
+                        onChange={() => toggleSelectOne(item.id)}
+                        disabled={!isActiveCase(item)}
+                        className="h-4 w-4 accent-pumpkin disabled:opacity-40"
+                      />
+                    </td>
                     <td className="p-5">
                       <p className="font-semibold">{item.caseNumber}</p>
                       <p className="mt-1 text-xs text-gray-500">
@@ -358,15 +591,66 @@ const ClaimCasesQueue = () => {
                       )}
                     </td>
                     <td className="p-5 text-xs text-gray-300">
+                      {item.assignee ? (
+                        <>
+                          <p className="font-semibold text-white">
+                            {item.assignee.fullName}
+                          </p>
+                          <p className="mt-1 text-gray-500">
+                            {item.assignee.email || "-"}
+                          </p>
+                          <p className="mt-3 text-gray-500">
+                            Nhận lúc {formatDateTime(item.assignedAt)}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="font-semibold text-yellow-200">
+                          Chưa phân công
+                        </p>
+                      )}
+                      {!finalStatuses.includes(item.status) && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button
+                            disabled={busyId === `ASSIGN_SELF-${item.id}`}
+                            onClick={() =>
+                              updateAssignment(item, "ASSIGN_SELF")
+                            }
+                            className="rounded-md border border-pumpkin/30 bg-pumpkin/10 px-3 py-1.5 text-xs font-bold text-pumpkin hover:bg-pumpkin/20 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Nhận xử lý
+                          </button>
+                          {item.assignedAdminId && (
+                            <button
+                              disabled={busyId === `RELEASE-${item.id}`}
+                              onClick={() => updateAssignment(item, "RELEASE")}
+                              className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Bỏ nhận
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-5 text-xs text-gray-300">
                       <SlaPill sla={item.sla} />
+                      <p className="mt-3 text-gray-500">
+                        {stageLabel[item.sla?.stage] ||
+                          item.sla?.stage ||
+                          "Chưa có giai đoạn"}
+                      </p>
                       {item.sla?.dueAt && (
-                        <p className="mt-3 text-gray-500">
+                        <p className="mt-1 text-gray-500">
                           Hạn {formatDateTime(item.sla.dueAt)}
                         </p>
                       )}
                       {item.sla?.status === "OVERDUE" && (
                         <p className="mt-1 text-red-200">
                           Trễ {formatMinutes(item.sla.overdueMinutes)}
+                        </p>
+                      )}
+                      {Number(item.sla?.escalationLevel) > 0 && (
+                        <p className="mt-1 font-semibold text-pumpkin">
+                          Escalation cấp {item.sla.escalationLevel}
                         </p>
                       )}
                       {["ON_TRACK", "AT_RISK"].includes(item.sla?.status) && (
@@ -433,7 +717,7 @@ const ClaimCasesQueue = () => {
               ) : (
                 <tr>
                   <td
-                    colSpan="6"
+                    colSpan="8"
                     className="p-10 text-center text-gray-500 italic"
                   >
                     Không có hồ sơ claim phù hợp.

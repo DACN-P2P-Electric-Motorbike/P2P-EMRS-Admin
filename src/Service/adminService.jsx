@@ -237,6 +237,18 @@ const adminService = {
     }
   },
 
+  updateClaimCaseAssignment: async (claimCaseId, payload) => {
+    try {
+      const response = await api.patch(
+        `/incidents/claim-cases/${claimCaseId}/assignment`,
+        payload,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi phân công hồ sơ claim" };
+    }
+  },
+
   getClaimCases: async (params = {}) => {
     try {
       const response = await api.get("/incidents/admin/claim-cases", {
@@ -245,6 +257,15 @@ const adminService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Lỗi lấy danh sách claim" };
+    }
+  },
+
+  getClaimCaseSummary: async () => {
+    try {
+      const response = await api.get("/incidents/admin/claim-cases/summary");
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi lấy thống kê claim" };
     }
   },
 

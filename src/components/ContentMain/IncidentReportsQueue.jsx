@@ -609,6 +609,11 @@ const IncidentReportsQueue = () => {
                           : ` · còn ${formatMinutes(claimSummary.claimCase.sla.remainingMinutes)}`}
                       </p>
                     )}
+                    <p className="mt-2 text-xs text-gray-500">
+                      Phụ trách:{" "}
+                      {claimSummary.claimCase.assignee?.fullName ||
+                        "Chưa phân công"}
+                    </p>
                   </>
                 ) : (
                   <p className="mt-2 text-sm text-gray-400">
