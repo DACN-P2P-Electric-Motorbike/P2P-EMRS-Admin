@@ -61,6 +61,18 @@ const claimSlaClass = {
   COMPLETED: "bg-green-500/10 text-green-200",
 };
 
+const claimRiskLabel = {
+  LOW: "Rủi ro thấp",
+  MEDIUM: "Rủi ro vừa",
+  HIGH: "Rủi ro cao",
+};
+
+const claimRiskClass = {
+  LOW: "bg-green-500/10 text-green-200",
+  MEDIUM: "bg-orange-500/10 text-orange-200",
+  HIGH: "bg-red-500/10 text-red-200",
+};
+
 const claimCaseStatusLabel = {
   OPEN: "Case mở",
   UNDER_REVIEW: "Đang review",
@@ -264,6 +276,16 @@ const ClaimSlaPill = ({ sla }) => (
     }`}
   >
     {claimSlaLabel[sla?.status] || "Chưa có SLA"}
+  </span>
+);
+
+const ClaimRiskPill = ({ risk }) => (
+  <span
+    className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
+      claimRiskClass[risk?.level] || "bg-white/10 text-white"
+    }`}
+  >
+    {claimRiskLabel[risk?.level] || "Chưa chấm rủi ro"}
   </span>
 );
 
@@ -594,6 +616,7 @@ const IncidentReportsQueue = () => {
                           claimSummary.claimCase.status}
                       </span>
                       <ClaimSlaPill sla={claimSummary.claimCase.sla} />
+                      <ClaimRiskPill risk={claimSummary.claimCase.risk} />
                       {claimSummary.claimCase.outcome && (
                         <span className="rounded-full bg-green-500/10 px-2.5 py-1 text-[10px] font-bold text-green-200">
                           {claimOutcomeLabel[claimSummary.claimCase.outcome] ||
@@ -608,6 +631,29 @@ const IncidentReportsQueue = () => {
                           ? ` · trễ ${formatMinutes(claimSummary.claimCase.sla.overdueMinutes)}`
                           : ` · còn ${formatMinutes(claimSummary.claimCase.sla.remainingMinutes)}`}
                       </p>
+                    )}
+                    <p className="mt-2 text-xs text-gray-500">
+                      Phụ trách:{" "}
+                      {claimSummary.claimCase.assignee?.fullName ||
+                        "Chưa phân công"}
+                    </p>
+                    {claimSummary.claimCase.risk && (
+                      <div className="mt-3 rounded-md border border-white/5 bg-black/10 p-3 text-xs text-gray-400">
+                        <p className="font-semibold text-white">
+                          Điểm rủi ro {claimSummary.claimCase.risk.score}
+                        </p>
+                        {claimSummary.claimCase.risk.indicators?.length > 0 ? (
+                          <ul className="mt-2 space-y-1">
+                            {claimSummary.claimCase.risk.indicators.map(
+                              (indicator) => (
+                                <li key={indicator.code}>{indicator.label}</li>
+                              ),
+                            )}
+                          </ul>
+                        ) : (
+                          <p className="mt-2">Chưa có cờ rủi ro.</p>
+                        )}
+                      </div>
                     )}
                   </>
                 ) : (
@@ -1060,6 +1106,14 @@ ClaimStatusPill.propTypes = {
 ClaimSlaPill.propTypes = {
   sla: PropTypes.shape({
     status: PropTypes.string,
+  }),
+};
+
+ClaimRiskPill.propTypes = {
+  risk: PropTypes.shape({
+    level: PropTypes.string,
+    score: PropTypes.number,
+    indicators: PropTypes.array,
   }),
 };
 

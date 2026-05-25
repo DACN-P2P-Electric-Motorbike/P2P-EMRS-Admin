@@ -232,6 +232,7 @@ describe("AdminService - Unit Tests (UC-10, 11, 12)", () => {
     const params = {
       status: "PENDING_SECOND_REVIEW",
       slaStatus: "OVERDUE",
+      slaStage: "SECOND_REVIEW",
       limit: 20,
     };
 
@@ -240,6 +241,28 @@ describe("AdminService - Unit Tests (UC-10, 11, 12)", () => {
     expect(api.get).toHaveBeenCalledWith("/incidents/admin/claim-cases", {
       params,
     });
+  });
+
+  test("getClaimCaseSummary: Phải lấy thống kê hàng chờ hồ sơ claim", async () => {
+    api.get.mockResolvedValue({ data: { status: "success" } });
+
+    await adminService.getClaimCaseSummary();
+
+    expect(api.get).toHaveBeenCalledWith(
+      "/incidents/admin/claim-cases/summary",
+    );
+  });
+
+  test("updateClaimCaseAssignment: Phải gửi thao tác phân công hồ sơ claim", async () => {
+    api.patch.mockResolvedValue({ data: { id: "claim-case-1" } });
+    const payload = { action: "ASSIGN_SELF" };
+
+    await adminService.updateClaimCaseAssignment("claim-case-1", payload);
+
+    expect(api.patch).toHaveBeenCalledWith(
+      "/incidents/claim-cases/claim-case-1/assignment",
+      payload,
+    );
   });
 
   test("reviewIncidentReport: Phải gửi trạng thái xử lý sự cố", async () => {

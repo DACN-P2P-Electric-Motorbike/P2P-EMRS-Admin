@@ -268,6 +268,17 @@ describe("IncidentReportsQueue", () => {
           caseNumber: "CLM-1",
           status: "OPEN",
           summary: "1 incident",
+          risk: {
+            level: "MEDIUM",
+            score: 45,
+            indicators: [
+              {
+                code: "HIGH_SEVERITY_INCIDENT",
+                label: "High-severity incident in this claim",
+                severity: "MEDIUM",
+              },
+            ],
+          },
         },
       },
     });
@@ -275,6 +286,11 @@ describe("IncidentReportsQueue", () => {
     render(<IncidentReportsQueue />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Xem claim" }));
+    expect(await screen.findByText("Rủi ro vừa")).toBeInTheDocument();
+    expect(screen.getByText("Điểm rủi ro 45")).toBeInTheDocument();
+    expect(
+      screen.getByText("High-severity incident in this claim"),
+    ).toBeInTheDocument();
     fireEvent.click(
       await screen.findByRole("button", { name: "Duyệt claim owner" }),
     );
