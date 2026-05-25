@@ -279,6 +279,16 @@ describe("IncidentReportsQueue", () => {
               },
             ],
           },
+          protectionSettlement: {
+            status: "CALCULATED",
+            protectionPlan: "PREMIUM",
+            eligibleDamageAmount: 4000000,
+            nonCoveredChargeAmount: 100000,
+            deductibleAppliedAmount: 500000,
+            platformCoverageAmount: 3000000,
+            renterLiabilityAmount: 1000000,
+            excessAboveCoverageAmount: 500000,
+          },
         },
       },
     });
@@ -290,6 +300,13 @@ describe("IncidentReportsQueue", () => {
     expect(screen.getByText("Điểm rủi ro 45")).toBeInTheDocument();
     expect(
       screen.getByText("High-severity incident in this claim"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Phân bổ gói bảo vệ Premium")).toBeInTheDocument();
+    expect(screen.getByText(/Vượt hạn mức:/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Phân bổ nội bộ; không xác nhận giao dịch cổng thanh toán.",
+      ),
     ).toBeInTheDocument();
     fireEvent.click(
       await screen.findByRole("button", { name: "Duyệt claim owner" }),

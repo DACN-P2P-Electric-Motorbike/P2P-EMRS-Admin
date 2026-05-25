@@ -92,6 +92,12 @@ const claimOutcomeLabel = {
   NO_ACTION_REQUIRED: "Không cần xử lý",
 };
 
+const protectionPlanLabel = {
+  BASIC: "Basic",
+  STANDARD: "Standard",
+  PREMIUM: "Premium",
+};
+
 const formatId = (id) => (id ? `#${id.slice(0, 8)}` : "-");
 
 const money = new Intl.NumberFormat("vi-VN", {
@@ -115,6 +121,52 @@ const formatMinutes = (value) => {
   if (hours <= 0) return `${remainder} phút`;
   if (remainder === 0) return `${hours} giờ`;
   return `${hours} giờ ${remainder} phút`;
+};
+
+const ProtectionSettlementPanel = ({ settlement }) => {
+  if (!settlement) return null;
+
+  return (
+    <div className="mt-3 rounded-md border border-green-500/20 bg-green-500/5 p-3 text-xs text-gray-300">
+      <p className="font-semibold text-green-200">
+        Phân bổ gói bảo vệ{" "}
+        {protectionPlanLabel[settlement.protectionPlan] ||
+          settlement.protectionPlan}
+      </p>
+      {settlement.status === "AWAITING_APPROVED_DAMAGE_CHARGE" ? (
+        <p className="mt-2 text-gray-400">
+          Chờ phí hư hại được duyệt để tính khấu trừ và hạn mức.
+        </p>
+      ) : (
+        <div className="mt-2 grid gap-1 sm:grid-cols-2">
+          <p>
+            Hư hại đủ điều kiện: {money.format(settlement.eligibleDamageAmount)}
+          </p>
+          <p>Khấu trừ: {money.format(settlement.deductibleAppliedAmount)}</p>
+          <p className="text-green-200">
+            Nền tảng hỗ trợ: {money.format(settlement.platformCoverageAmount)}
+          </p>
+          <p className="text-yellow-200">
+            Renter chịu: {money.format(settlement.renterLiabilityAmount)}
+          </p>
+          {settlement.excessAboveCoverageAmount > 0 && (
+            <p>
+              Vượt hạn mức: {money.format(settlement.excessAboveCoverageAmount)}
+            </p>
+          )}
+          {settlement.nonCoveredChargeAmount > 0 && (
+            <p>
+              Phí ngoài bảo vệ:{" "}
+              {money.format(settlement.nonCoveredChargeAmount)}
+            </p>
+          )}
+        </div>
+      )}
+      <p className="mt-2 text-gray-500">
+        Phân bổ nội bộ; không xác nhận giao dịch cổng thanh toán.
+      </p>
+    </div>
+  );
 };
 
 const parseJsonObject = (value) => {
@@ -655,6 +707,9 @@ const IncidentReportsQueue = () => {
                         )}
                       </div>
                     )}
+                    <ProtectionSettlementPanel
+                      settlement={claimSummary.claimCase.protectionSettlement}
+                    />
                   </>
                 ) : (
                   <p className="mt-2 text-sm text-gray-400">
@@ -1114,6 +1169,19 @@ ClaimRiskPill.propTypes = {
     level: PropTypes.string,
     score: PropTypes.number,
     indicators: PropTypes.array,
+  }),
+};
+
+ProtectionSettlementPanel.propTypes = {
+  settlement: PropTypes.shape({
+    status: PropTypes.string,
+    protectionPlan: PropTypes.string,
+    eligibleDamageAmount: PropTypes.number,
+    nonCoveredChargeAmount: PropTypes.number,
+    deductibleAppliedAmount: PropTypes.number,
+    platformCoverageAmount: PropTypes.number,
+    renterLiabilityAmount: PropTypes.number,
+    excessAboveCoverageAmount: PropTypes.number,
   }),
 };
 

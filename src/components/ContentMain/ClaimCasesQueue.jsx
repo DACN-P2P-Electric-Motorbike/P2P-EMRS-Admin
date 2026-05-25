@@ -31,6 +31,12 @@ const outcomeLabel = {
   NO_ACTION_REQUIRED: "Không cần xử lý",
 };
 
+const protectionPlanLabel = {
+  BASIC: "Basic",
+  STANDARD: "Standard",
+  PREMIUM: "Premium",
+};
+
 const statusFilters = [
   { value: "", label: "Tất cả" },
   { value: "OPEN", label: "Mở" },
@@ -108,6 +114,12 @@ const finalStatuses = ["APPROVED", "REJECTED", "RESOLVED", "CANCELLED"];
 const formatId = (id) => (id ? `#${id.slice(0, 8)}` : "-");
 const isActiveCase = (item) => !finalStatuses.includes(item.status);
 
+const money = new Intl.NumberFormat("vi-VN", {
+  style: "currency",
+  currency: "VND",
+  maximumFractionDigits: 0,
+});
+
 const formatDateTime = (value) =>
   value
     ? new Intl.DateTimeFormat("vi-VN", {
@@ -160,6 +172,42 @@ const RiskPill = ({ risk }) => (
     {riskLabel[risk?.level] || "Chưa chấm rủi ro"}
   </span>
 );
+
+const ProtectionSettlement = ({ settlement }) => {
+  if (!settlement) return null;
+
+  return (
+    <div className="mt-3 rounded-md border border-green-500/20 bg-green-500/5 p-3 text-xs text-gray-300">
+      <p className="font-semibold text-green-200">
+        Phân bổ bảo vệ{" "}
+        {protectionPlanLabel[settlement.protectionPlan] ||
+          settlement.protectionPlan}
+      </p>
+      {settlement.status === "AWAITING_APPROVED_DAMAGE_CHARGE" ? (
+        <p className="mt-2 text-gray-400">
+          Chờ phí hư hại được duyệt để tính mức bảo vệ.
+        </p>
+      ) : (
+        <>
+          <p className="mt-2">
+            Hư hại đủ điều kiện: {money.format(settlement.eligibleDamageAmount)}
+          </p>
+          <p className="mt-1 text-green-200">
+            Nền tảng hỗ trợ: {money.format(settlement.platformCoverageAmount)}
+          </p>
+          <p className="mt-1 text-yellow-200">
+            Renter chịu: {money.format(settlement.renterLiabilityAmount)}
+          </p>
+          {settlement.nonCoveredChargeAmount > 0 && (
+            <p className="mt-1 text-gray-400">
+              Ngoài bảo vệ: {money.format(settlement.nonCoveredChargeAmount)}
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
 
 const ReviewerLine = ({ label, reviewer, decision, reviewedAt }) => (
   <div className="text-xs text-gray-300">
@@ -685,6 +733,9 @@ const ClaimCasesQueue = () => {
                           Cần Admin khác xác nhận cùng quyết định.
                         </p>
                       )}
+                      <ProtectionSettlement
+                        settlement={item.protectionSettlement}
+                      />
                     </td>
                     <td className="p-5 text-xs text-gray-300">
                       {item.assignee ? (
@@ -769,9 +820,7 @@ const ClaimCasesQueue = () => {
                           ))}
                         </ul>
                       ) : (
-                        <p className="mt-3 text-gray-500">
-                          Chưa có cờ rủi ro.
-                        </p>
+                        <p className="mt-3 text-gray-500">Chưa có cờ rủi ro.</p>
                       )}
                     </td>
                     <td className="p-5 text-xs text-gray-300">
@@ -862,6 +911,17 @@ RiskPill.propTypes = {
     level: PropTypes.string,
     score: PropTypes.number,
     indicators: PropTypes.array,
+  }),
+};
+
+ProtectionSettlement.propTypes = {
+  settlement: PropTypes.shape({
+    status: PropTypes.string,
+    protectionPlan: PropTypes.string,
+    eligibleDamageAmount: PropTypes.number,
+    nonCoveredChargeAmount: PropTypes.number,
+    platformCoverageAmount: PropTypes.number,
+    renterLiabilityAmount: PropTypes.number,
   }),
 };
 
