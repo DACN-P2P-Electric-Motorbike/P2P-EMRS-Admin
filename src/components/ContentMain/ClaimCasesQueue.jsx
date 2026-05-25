@@ -61,6 +61,18 @@ const stageLabel = {
   CLOSED: "Đã chốt",
 };
 
+const riskLabel = {
+  LOW: "Rủi ro thấp",
+  MEDIUM: "Rủi ro vừa",
+  HIGH: "Rủi ro cao",
+};
+
+const riskClass = {
+  LOW: "bg-green-500/10 text-green-200",
+  MEDIUM: "bg-orange-500/10 text-orange-200",
+  HIGH: "bg-red-500/10 text-red-200",
+};
+
 const slaFilters = [
   { value: "", label: "Tất cả SLA" },
   { value: "OVERDUE", label: "Quá hạn" },
@@ -136,6 +148,16 @@ const SlaPill = ({ sla }) => (
     }`}
   >
     {slaLabel[sla?.status] || "Chưa có SLA"}
+  </span>
+);
+
+const RiskPill = ({ risk }) => (
+  <span
+    className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
+      riskClass[risk?.level] || "bg-white/10 text-white"
+    }`}
+  >
+    {riskLabel[risk?.level] || "Chưa chấm rủi ro"}
   </span>
 );
 
@@ -217,6 +239,10 @@ const ClaimCasesQueue = () => {
     const unassigned = items.filter(
       (item) => isActiveCase(item) && !item.assignedAdminId,
     ).length;
+    const highRisk = items.filter((item) => item.risk?.level === "HIGH").length;
+    const mediumRisk = items.filter(
+      (item) => item.risk?.level === "MEDIUM",
+    ).length;
 
     return {
       total: items.length,
@@ -227,6 +253,8 @@ const ClaimCasesQueue = () => {
       overdue,
       atRisk,
       unassigned,
+      highRisk,
+      mediumRisk,
     };
   }, [items]);
 
@@ -250,6 +278,8 @@ const ClaimCasesQueue = () => {
     secondReview: totals.secondReview,
     overdue: totals.overdue,
     atRisk: totals.atRisk,
+    highRisk: totals.highRisk,
+    mediumRisk: totals.mediumRisk,
   };
   const slaPolicy = dashboard.policy;
 
@@ -465,7 +495,7 @@ const ClaimCasesQueue = () => {
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4 xl:grid-cols-8">
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4 xl:grid-cols-10">
         <div className="rounded-xl border border-white/5 bg-primary p-5">
           <p className="text-xs uppercase tracking-widest text-gray-400">
             Tổng case
@@ -518,6 +548,22 @@ const ClaimCasesQueue = () => {
           </p>
           <p className="mt-2 text-2xl font-bold text-gray-200">
             {dashboard.unassigned}
+          </p>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-primary p-5">
+          <p className="text-xs uppercase tracking-widest text-gray-400">
+            Rủi ro cao
+          </p>
+          <p className="mt-2 text-2xl font-bold text-red-200">
+            {dashboard.highRisk}
+          </p>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-primary p-5">
+          <p className="text-xs uppercase tracking-widest text-gray-400">
+            Rủi ro vừa
+          </p>
+          <p className="mt-2 text-2xl font-bold text-orange-200">
+            {dashboard.mediumRisk}
           </p>
         </div>
       </div>
@@ -573,7 +619,7 @@ const ClaimCasesQueue = () => {
 
       <section className="overflow-hidden rounded-xl border border-white/5 bg-primary shadow-2xl">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1520px] text-left">
+          <table className="w-full min-w-[1680px] text-left">
             <thead>
               <tr className="border-b border-white/5 text-xs uppercase tracking-widest text-gray-400">
                 <th className="p-5">
@@ -590,6 +636,7 @@ const ClaimCasesQueue = () => {
                 <th className="p-5">Trạng thái</th>
                 <th className="p-5">Phụ trách</th>
                 <th className="p-5">SLA</th>
+                <th className="p-5">Rủi ro</th>
                 <th className="p-5">Người liên quan</th>
                 <th className="p-5">Review</th>
                 <th className="p-5">Hành động</th>
@@ -709,6 +756,25 @@ const ClaimCasesQueue = () => {
                       )}
                     </td>
                     <td className="p-5 text-xs text-gray-300">
+                      <RiskPill risk={item.risk} />
+                      <p className="mt-3 text-gray-500">
+                        Điểm {Number(item.risk?.score) || 0}
+                      </p>
+                      {item.risk?.indicators?.length > 0 ? (
+                        <ul className="mt-3 space-y-1">
+                          {item.risk.indicators.slice(0, 3).map((indicator) => (
+                            <li key={indicator.code} className="text-gray-400">
+                              {indicator.label}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-3 text-gray-500">
+                          Chưa có cờ rủi ro.
+                        </p>
+                      )}
+                    </td>
+                    <td className="p-5 text-xs text-gray-300">
                       <p className="font-semibold text-white">
                         Renter: {item.booking?.renter?.fullName || "-"}
                       </p>
@@ -766,7 +832,7 @@ const ClaimCasesQueue = () => {
               ) : (
                 <tr>
                   <td
-                    colSpan="8"
+                    colSpan="9"
                     className="p-10 text-center text-gray-500 italic"
                   >
                     Không có hồ sơ claim phù hợp.
@@ -788,6 +854,14 @@ StatusPill.propTypes = {
 SlaPill.propTypes = {
   sla: PropTypes.shape({
     status: PropTypes.string,
+  }),
+};
+
+RiskPill.propTypes = {
+  risk: PropTypes.shape({
+    level: PropTypes.string,
+    score: PropTypes.number,
+    indicators: PropTypes.array,
   }),
 };
 

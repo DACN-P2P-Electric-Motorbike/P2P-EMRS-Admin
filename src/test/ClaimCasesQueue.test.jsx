@@ -38,6 +38,22 @@ describe("ClaimCasesQueue", () => {
         overdueMinutes: 45,
         escalationLevel: 2,
       },
+      risk: {
+        level: "HIGH",
+        score: 80,
+        indicators: [
+          {
+            code: "CRITICAL_INCIDENT",
+            label: "Critical-severity incident in this claim",
+            severity: "HIGH",
+          },
+          {
+            code: "CLAIM_AMOUNT_EXCEEDS_DEPOSIT",
+            label: "Open claim amount is at least the held deposit",
+            severity: "HIGH",
+          },
+        ],
+      },
       createdAt: "2026-05-24T04:00:00.000Z",
       booking: {
         renter: { fullName: "Renter One", email: "renter@example.com" },
@@ -72,6 +88,11 @@ describe("ClaimCasesQueue", () => {
         remainingMinutes: 0,
         overdueMinutes: 0,
         escalationLevel: 0,
+      },
+      risk: {
+        level: "LOW",
+        score: 0,
+        indicators: [],
       },
       createdAt: "2026-05-23T04:00:00.000Z",
       booking: {
@@ -111,6 +132,8 @@ describe("ClaimCasesQueue", () => {
         secondReview: 3,
         overdue: 2,
         atRisk: 1,
+        highRisk: 1,
+        mediumRisk: 0,
       },
     });
     adminService.reviewClaimCase.mockResolvedValue({
@@ -142,6 +165,11 @@ describe("ClaimCasesQueue", () => {
     expect(screen.getByText("Chính sách SLA")).toBeInTheDocument();
     expect(screen.getByText(/Lần 1: 24 giờ/)).toBeInTheDocument();
     expect(screen.getByText("Escalation cấp 2")).toBeInTheDocument();
+    expect(screen.getAllByText("Rủi ro cao").length).toBeGreaterThan(0);
+    expect(screen.getByText("Điểm 80")).toBeInTheDocument();
+    expect(
+      screen.getByText("Critical-severity incident in this claim"),
+    ).toBeInTheDocument();
     expect(screen.getByText("9")).toBeInTheDocument();
     expect(screen.getAllByText("3").length).toBeGreaterThan(0);
     expect(adminService.getClaimCases).toHaveBeenCalledWith({ limit: 100 });
