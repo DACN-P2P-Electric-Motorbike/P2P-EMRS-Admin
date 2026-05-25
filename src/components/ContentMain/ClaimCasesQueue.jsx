@@ -164,6 +164,7 @@ const ClaimCasesQueue = () => {
   const [slaStage, setSlaStage] = useState("");
   const [assignment, setAssignment] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkDecision, setBulkDecision] = useState(reviewDecisions[0]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
@@ -307,6 +308,35 @@ const ClaimCasesQueue = () => {
       await loadQueue();
     } catch (err) {
       alert(err.message || "Không thể cập nhật các hồ sơ claim đã chọn");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const reviewSelectedCases = async () => {
+    if (!selectedItems.length || !bulkDecision) return;
+
+    const notes = window.prompt(
+      `${outcomeLabel[bulkDecision] || bulkDecision} - ghi chú review cho ${
+        selectedItems.length
+      } case`,
+      "",
+    );
+    if (notes === null) return;
+
+    setBusyId(`BULK-REVIEW-${bulkDecision}`);
+    try {
+      await Promise.all(
+        selectedItems.map((item) =>
+          adminService.reviewClaimCase(item.id, {
+            decision: bulkDecision,
+            notes,
+          }),
+        ),
+      );
+      await loadQueue();
+    } catch (err) {
+      alert(err.message || "Không thể duyệt các hồ sơ claim đã chọn");
     } finally {
       setBusyId(null);
     }
@@ -497,7 +527,26 @@ const ClaimCasesQueue = () => {
           <p className="text-sm font-semibold text-gray-200">
             Đã chọn {selectedItems.length} case đang mở
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              aria-label="Quyết định duyệt các case đã chọn"
+              value={bulkDecision}
+              onChange={(event) => setBulkDecision(event.target.value)}
+              className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-200 outline-none hover:bg-white/10"
+            >
+              {reviewDecisions.map((decision) => (
+                <option key={decision} value={decision} className="bg-primary">
+                  {outcomeLabel[decision]}
+                </option>
+              ))}
+            </select>
+            <button
+              disabled={busyId === `BULK-REVIEW-${bulkDecision}`}
+              onClick={reviewSelectedCases}
+              className="rounded-md border border-green-400/30 bg-green-500/10 px-3 py-1.5 text-xs font-bold text-green-200 hover:bg-green-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Duyệt đã chọn
+            </button>
             <button
               disabled={busyId === "BULK-ASSIGN_SELF"}
               onClick={() => updateSelectedAssignments("ASSIGN_SELF")}

@@ -238,6 +238,38 @@ describe("ClaimCasesQueue", () => {
     expect(adminService.updateClaimCaseAssignment).toHaveBeenCalledTimes(1);
   });
 
+  it("bulk submits a review decision for selected active claim cases", async () => {
+    render(<ClaimCasesQueue />);
+
+    fireEvent.click(await screen.findByLabelText("Chọn tất cả case đang mở"));
+    expect(
+      await screen.findByText("Đã chọn 1 case đang mở"),
+    ).toBeInTheDocument();
+
+    fireEvent.change(
+      screen.getByLabelText("Quyết định duyệt các case đã chọn"),
+      {
+        target: { value: "PAYOUT_RELEASE_APPROVED" },
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Duyệt đã chọn" }));
+
+    await waitFor(() => {
+      expect(adminService.reviewClaimCase).toHaveBeenCalledWith(
+        "claim-case-1",
+        {
+          decision: "PAYOUT_RELEASE_APPROVED",
+          notes: "Second review confirmed",
+        },
+      );
+    });
+    expect(window.prompt).toHaveBeenCalledWith(
+      "Duyệt payout - ghi chú review cho 1 case",
+      "",
+    );
+    expect(adminService.reviewClaimCase).toHaveBeenCalledTimes(1);
+  });
+
   it("submits a four-eyes review decision from the queue", async () => {
     render(<ClaimCasesQueue />);
 
