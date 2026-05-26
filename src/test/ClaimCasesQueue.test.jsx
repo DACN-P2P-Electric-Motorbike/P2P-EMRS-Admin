@@ -94,6 +94,14 @@ describe("ClaimCasesQueue", () => {
         score: 0,
         indicators: [],
       },
+      protectionSettlement: {
+        status: "CALCULATED",
+        protectionPlan: "PREMIUM",
+        eligibleDamageAmount: 4000000,
+        nonCoveredChargeAmount: 100000,
+        platformCoverageAmount: 3000000,
+        renterLiabilityAmount: 1000000,
+      },
       createdAt: "2026-05-23T04:00:00.000Z",
       booking: {
         renter: { fullName: "Renter Two", email: "renter2@example.com" },
@@ -171,6 +179,9 @@ describe("ClaimCasesQueue", () => {
       screen.getByText("Critical-severity incident in this claim"),
     ).toBeInTheDocument();
     expect(screen.getByText("9")).toBeInTheDocument();
+    expect(screen.getByText("Phân bổ bảo vệ Premium")).toBeInTheDocument();
+    expect(screen.getByText(/Nền tảng hỗ trợ:/)).toBeInTheDocument();
+    expect(screen.getByText(/Ngoài bảo vệ:/)).toBeInTheDocument();
     expect(screen.getAllByText("3").length).toBeGreaterThan(0);
     expect(adminService.getClaimCases).toHaveBeenCalledWith({ limit: 100 });
     expect(adminService.getClaimCaseSummary).toHaveBeenCalled();

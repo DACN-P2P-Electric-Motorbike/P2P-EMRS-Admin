@@ -27,12 +27,23 @@ describe("IncidentReportsQueue", () => {
         description: "Rear panel scratch after checkout",
         createdAt: "2026-05-23T08:00:00.000Z",
         evidence: {
-          evidenceUrls: ["https://example.com/scratch.jpg"],
+          evidenceUrls: [
+            "https://example.com/scratch.jpg",
+            "https://example.com/legacy-note.jpg",
+          ],
+          uploadedEvidence: [
+            {
+              url: "https://example.com/scratch.jpg",
+              uploadedAt: "2026-05-23T07:59:00.000Z",
+              serverVerified: true,
+            },
+          ],
           handoverPhotos: [
             {
               id: "photo-1",
               photoUrl: "https://example.com/checkout.jpg",
               photoType: "rear-panel",
+              jointlyConfirmed: true,
             },
           ],
         },
@@ -158,6 +169,9 @@ describe("IncidentReportsQueue", () => {
       "href",
       "https://example.com/checkout.jpg",
     );
+    expect(screen.getByText("API xác thực upload")).toBeInTheDocument();
+    expect(screen.getByText("URL chưa có receipt")).toBeInTheDocument();
+    expect(screen.getByText("Hai bên xác nhận")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Đang xem" }));
 
@@ -279,6 +293,16 @@ describe("IncidentReportsQueue", () => {
               },
             ],
           },
+          protectionSettlement: {
+            status: "CALCULATED",
+            protectionPlan: "PREMIUM",
+            eligibleDamageAmount: 4000000,
+            nonCoveredChargeAmount: 100000,
+            deductibleAppliedAmount: 500000,
+            platformCoverageAmount: 3000000,
+            renterLiabilityAmount: 1000000,
+            excessAboveCoverageAmount: 500000,
+          },
         },
       },
     });
@@ -290,6 +314,13 @@ describe("IncidentReportsQueue", () => {
     expect(screen.getByText("Điểm rủi ro 45")).toBeInTheDocument();
     expect(
       screen.getByText("High-severity incident in this claim"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Phân bổ gói bảo vệ Premium")).toBeInTheDocument();
+    expect(screen.getByText(/Vượt hạn mức:/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Phân bổ nội bộ; không xác nhận giao dịch cổng thanh toán.",
+      ),
     ).toBeInTheDocument();
     fireEvent.click(
       await screen.findByRole("button", { name: "Duyệt claim owner" }),

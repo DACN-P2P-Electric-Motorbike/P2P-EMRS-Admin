@@ -92,6 +92,12 @@ const claimOutcomeLabel = {
   NO_ACTION_REQUIRED: "Không cần xử lý",
 };
 
+const protectionPlanLabel = {
+  BASIC: "Basic",
+  STANDARD: "Standard",
+  PREMIUM: "Premium",
+};
+
 const formatId = (id) => (id ? `#${id.slice(0, 8)}` : "-");
 
 const money = new Intl.NumberFormat("vi-VN", {
@@ -115,6 +121,52 @@ const formatMinutes = (value) => {
   if (hours <= 0) return `${remainder} phút`;
   if (remainder === 0) return `${hours} giờ`;
   return `${hours} giờ ${remainder} phút`;
+};
+
+const ProtectionSettlementPanel = ({ settlement }) => {
+  if (!settlement) return null;
+
+  return (
+    <div className="mt-3 rounded-md border border-green-500/20 bg-green-500/5 p-3 text-xs text-gray-300">
+      <p className="font-semibold text-green-200">
+        Phân bổ gói bảo vệ{" "}
+        {protectionPlanLabel[settlement.protectionPlan] ||
+          settlement.protectionPlan}
+      </p>
+      {settlement.status === "AWAITING_APPROVED_DAMAGE_CHARGE" ? (
+        <p className="mt-2 text-gray-400">
+          Chờ phí hư hại được duyệt để tính khấu trừ và hạn mức.
+        </p>
+      ) : (
+        <div className="mt-2 grid gap-1 sm:grid-cols-2">
+          <p>
+            Hư hại đủ điều kiện: {money.format(settlement.eligibleDamageAmount)}
+          </p>
+          <p>Khấu trừ: {money.format(settlement.deductibleAppliedAmount)}</p>
+          <p className="text-green-200">
+            Nền tảng hỗ trợ: {money.format(settlement.platformCoverageAmount)}
+          </p>
+          <p className="text-yellow-200">
+            Renter chịu: {money.format(settlement.renterLiabilityAmount)}
+          </p>
+          {settlement.excessAboveCoverageAmount > 0 && (
+            <p>
+              Vượt hạn mức: {money.format(settlement.excessAboveCoverageAmount)}
+            </p>
+          )}
+          {settlement.nonCoveredChargeAmount > 0 && (
+            <p>
+              Phí ngoài bảo vệ:{" "}
+              {money.format(settlement.nonCoveredChargeAmount)}
+            </p>
+          )}
+        </div>
+      )}
+      <p className="mt-2 text-gray-500">
+        Phân bổ nội bộ; không xác nhận giao dịch cổng thanh toán.
+      </p>
+    </div>
+  );
 };
 
 const parseJsonObject = (value) => {
@@ -293,7 +345,15 @@ const EvidenceLinks = ({ report }) => {
   const evidence = parseJsonObject(report.evidence);
   const required = parseJsonObject(report.requiredEvidence);
   const urls = evidence.evidenceUrls || [];
+  const uploadedEvidence = evidence.uploadedEvidence || [];
+  const verifiedUrls = new Set(uploadedEvidence.map((upload) => upload.url));
+  const legacyUrls = urls.filter((url) => !verifiedUrls.has(url));
   const handoverPhotos = evidence.handoverPhotos || [];
+  const confirmationLabel = (photo) => {
+    if (photo.jointlyConfirmed === true) return "Hai bên xác nhận";
+    if (photo.jointlyConfirmed === false) return "Chưa xác nhận hai bên";
+    return "Chưa có dữ liệu xác nhận";
+  };
 
   return (
     <div className="space-y-2">
@@ -307,32 +367,63 @@ const EvidenceLinks = ({ report }) => {
         {required.photoRequired ? "Bắt buộc chứng cứ ảnh" : "Chứng cứ tùy chọn"}
       </p>
       <div className="flex flex-wrap gap-2">
-        {urls.map((url, index) => (
-          <a
-            key={url}
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-gray-200 hover:border-pumpkin/70 hover:text-pumpkin"
-          >
-            File {index + 1}
-          </a>
+        {uploadedEvidence.map((upload, index) => (
+          <div key={upload.url} className="space-y-1">
+            <a
+              href={upload.url}
+              target="_blank"
+              rel="noreferrer"
+              className="block rounded-md border border-green-400/20 bg-green-500/10 px-2.5 py-1 text-[11px] font-semibold text-green-100 hover:border-green-300"
+            >
+              File {index + 1}
+            </a>
+            <p className="text-[10px] font-semibold text-green-300">
+              API xác thực upload
+            </p>
+          </div>
+        ))}
+        {legacyUrls.map((url, index) => (
+          <div key={url} className="space-y-1">
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="block rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-gray-200 hover:border-pumpkin/70 hover:text-pumpkin"
+            >
+              File {uploadedEvidence.length + index + 1}
+            </a>
+            <p className="text-[10px] font-semibold text-yellow-200">
+              URL chưa có receipt
+            </p>
+          </div>
         ))}
         {handoverPhotos.map((photo, index) => (
-          <a
-            key={photo.id || photo.photoUrl}
-            href={photo.photoUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-md border border-blue-400/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-100 hover:border-blue-300"
-          >
-            {photo.photoType || `Bàn giao ${index + 1}`}
-          </a>
+          <div key={photo.id || photo.photoUrl} className="space-y-1">
+            <a
+              href={photo.photoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="block rounded-md border border-blue-400/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-100 hover:border-blue-300"
+            >
+              {photo.photoType || `Bàn giao ${index + 1}`}
+            </a>
+            <p
+              className={`text-[10px] font-semibold ${
+                photo.jointlyConfirmed === true
+                  ? "text-green-300"
+                  : "text-yellow-200"
+              }`}
+            >
+              {confirmationLabel(photo)}
+            </p>
+          </div>
         ))}
       </div>
-      {urls.length === 0 && handoverPhotos.length === 0 && (
-        <p className="text-xs text-gray-500">Không có chứng cứ đính kèm</p>
-      )}
+      {urls.length === 0 &&
+        uploadedEvidence.length === 0 &&
+        handoverPhotos.length === 0 && (
+          <p className="text-xs text-gray-500">Không có chứng cứ đính kèm</p>
+        )}
     </div>
   );
 };
@@ -655,6 +746,9 @@ const IncidentReportsQueue = () => {
                         )}
                       </div>
                     )}
+                    <ProtectionSettlementPanel
+                      settlement={claimSummary.claimCase.protectionSettlement}
+                    />
                   </>
                 ) : (
                   <p className="mt-2 text-sm text-gray-400">
@@ -1114,6 +1208,19 @@ ClaimRiskPill.propTypes = {
     level: PropTypes.string,
     score: PropTypes.number,
     indicators: PropTypes.array,
+  }),
+};
+
+ProtectionSettlementPanel.propTypes = {
+  settlement: PropTypes.shape({
+    status: PropTypes.string,
+    protectionPlan: PropTypes.string,
+    eligibleDamageAmount: PropTypes.number,
+    nonCoveredChargeAmount: PropTypes.number,
+    deductibleAppliedAmount: PropTypes.number,
+    platformCoverageAmount: PropTypes.number,
+    renterLiabilityAmount: PropTypes.number,
+    excessAboveCoverageAmount: PropTypes.number,
   }),
 };
 
