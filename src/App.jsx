@@ -53,7 +53,7 @@ const MainLayout = () => {
   return (
     <div className="flex min-h-screen w-full overflow-hidden bg-secondary font-bai">
       <Sidebar />
-      <main className="flex-1">
+      <main className="flex-1 min-w-0">
         <Outlet />
       </main>
     </div>
