@@ -47,6 +47,17 @@ const adminService = {
     }
   },
 
+  // Hàm lấy điểm uy tín của người dùng, và một số thông tin liên quan
+  getUserTrustScore: async (userId) => {
+    try {
+      // Endpoint: /admin/users/{id}/trust-score | Method: GET
+      const response = await api.get(`/admin/users/${userId}/trust-score`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Lỗi lấy điểm uy tín người dùng" };
+    }
+  },
+
   // Giả định endpoint cập nhật trạng thái người dùng
   // updateUserStatus: async (userId, status) => {
   //   return await api.patch(`/admin/users/${userId}/status`, { status });
