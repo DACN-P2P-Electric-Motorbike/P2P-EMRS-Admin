@@ -58,6 +58,13 @@ const adminService = {
     }
   },
 
+  // 2. API PATCH: Điều chỉnh điểm thủ công
+  adjustUserTrustScore: async (userId, payload) => {
+    // payload bao gồm: { delta: number, reason: string }
+    const response = await api.patch(`/admin/users/${userId}/trust-score`, payload);
+    return response.data;
+  },
+
   // Giả định endpoint cập nhật trạng thái người dùng
   // updateUserStatus: async (userId, status) => {
   //   return await api.patch(`/admin/users/${userId}/status`, { status });
