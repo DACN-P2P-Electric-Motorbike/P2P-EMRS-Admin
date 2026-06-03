@@ -56,6 +56,80 @@ const getEvidence = (charge) => {
 
 const getDisputeInfo = (charge) => getEvidence(charge).dispute || null;
 
+const getManualInfo = (charge) => getEvidence(charge).manual || null;
+
+const getChargeEvidenceUrls = (charge) => {
+  const evidence = getEvidence(charge);
+  const urls = [
+    ...(evidence.manual?.evidenceUrls || []),
+    ...(evidence.evidenceUrls || []),
+  ];
+  return [...new Set(urls.filter(Boolean))];
+};
+
+const claimStatusLabel = {
+  NO_CLAIM: "Chưa có claim",
+  OPEN: "Đang mở",
+  UNDER_REVIEW: "Đang xét duyệt",
+  AWAITING_CHARGE_REVIEW: "Chờ duyệt phí",
+  AWAITING_DEPOSIT_DECISION: "Chờ quyết định cọc",
+  AWAITING_PAYOUT: "Chờ payout",
+  RESOLVED: "Đã xử lý",
+};
+
+const claimBlockerText = (blocker) => {
+  const count = blocker.count || 0;
+  switch (blocker.code) {
+    case "UNRESOLVED_INCIDENTS":
+      return `${count} sự cố đang mở hoặc đang xét duyệt`;
+    case "UNRESOLVED_POST_TRIP_CHARGES":
+      return `${count} phí sau chuyến cần admin duyệt`;
+    case "APPROVED_CHARGES_NOT_CAPTURED":
+      return `${count} phí đã duyệt chưa khấu trừ hoặc miễn`;
+    case "DEPOSIT_DECISION_PENDING":
+      return "Tiền cọc đang chờ quyết định";
+    case "OWNER_PAYOUT_ON_HOLD":
+      return "Payout owner đang bị giữ";
+    default:
+      return blocker.label || blocker.code;
+  }
+};
+
+const claimTimelineText = (event) => {
+  switch (event.type) {
+    case "BOOKING_CREATED":
+      return "Booking được tạo";
+    case "PAYMENT_COMPLETED":
+      return "Thanh toán hoàn tất";
+    case "TRIP_COMPLETED":
+      return "Chuyến đi hoàn tất";
+    case "DEPOSIT_HELD":
+      return "Tiền cọc được giữ";
+    case "DEPOSIT_DISPUTED":
+      return "Tiền cọc chuyển tranh chấp";
+    case "DEPOSIT_RELEASED":
+      return "Tiền cọc đã hoàn";
+    case "POST_TRIP_CHARGE_CREATED":
+      return "Phí sau chuyến được tạo";
+    case "POST_TRIP_CHARGE_REVIEWED":
+      return "Phí sau chuyến được duyệt";
+    case "INCIDENT_CREATED":
+      return "Sự cố được báo cáo";
+    case "INCIDENT_REVIEWED":
+      return "Sự cố được xem xét";
+    case "INCIDENT_RESOLVED":
+      return "Sự cố được kết luận";
+    case "OWNER_PAYOUT_CREATED":
+      return "Payout owner được chuẩn bị";
+    case "OWNER_PAYOUT_PROCESSED":
+      return "Payout owner bắt đầu xử lý";
+    case "OWNER_PAYOUT_COMPLETED":
+      return "Payout owner hoàn tất";
+    default:
+      return event.label || event.type;
+  }
+};
+
 const formatDateTime = (value) =>
   value
     ? new Intl.DateTimeFormat("vi-VN", {
@@ -77,6 +151,9 @@ const FinancialOperations = () => {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
+  const [claimSummary, setClaimSummary] = useState(null);
+  const [claimLoadingId, setClaimLoadingId] = useState(null);
+  const [claimError, setClaimError] = useState("");
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -130,6 +207,19 @@ const FinancialOperations = () => {
       alert(err.message || "Không thể cập nhật phí");
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const loadChargeTracking = async (bookingId) => {
+    setClaimLoadingId(bookingId);
+    setClaimError("");
+    try {
+      const result = await adminService.getBookingClaimSummary(bookingId);
+      setClaimSummary(result.data || result);
+    } catch (err) {
+      setClaimError(err.message || "Không thể tải tracking phí sau chuyến");
+    } finally {
+      setClaimLoadingId(null);
     }
   };
 
@@ -272,6 +362,157 @@ const FinancialOperations = () => {
         </div>
       </div>
 
+      {claimError && (
+        <div className="mb-5 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {claimError}
+        </div>
+      )}
+
+      {claimSummary && (
+        <section className="mb-6 rounded-xl border border-pumpkin/20 bg-primary p-5 shadow-2xl">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-gray-400">
+                Tracking quyết định phí {formatId(claimSummary.bookingId)}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <StatusPill value={claimSummary.status} />
+                <span className="text-xs text-gray-400">
+                  {claimStatusLabel[claimSummary.status] || claimSummary.status}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => setClaimSummary(null)}
+              className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-300 hover:bg-white/10"
+            >
+              Đóng
+            </button>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+            <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
+              <p className="text-[11px] uppercase tracking-widest text-gray-500">
+                Phí chờ duyệt
+              </p>
+              <p className="mt-1 text-lg font-bold text-yellow-200">
+                {money.format(claimSummary.totals?.pendingChargeAmount || 0)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
+              <p className="text-[11px] uppercase tracking-widest text-gray-500">
+                Phí đã duyệt
+              </p>
+              <p className="mt-1 text-lg font-bold text-blue-200">
+                {money.format(claimSummary.totals?.approvedChargeAmount || 0)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
+              <p className="text-[11px] uppercase tracking-widest text-gray-500">
+                Cọc có thể hoàn
+              </p>
+              <p className="mt-1 text-lg font-bold text-green-200">
+                {money.format(
+                  claimSummary.totals?.releasableDepositAmount || 0,
+                )}
+              </p>
+            </div>
+            <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
+              <p className="text-[11px] uppercase tracking-widest text-gray-500">
+                Blocker
+              </p>
+              <p className="mt-1 text-lg font-bold">
+                {claimSummary.blockers?.length || 0}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                Phí trong booking
+              </p>
+              <div className="mt-3 space-y-2">
+                {(claimSummary.charges || []).length > 0 ? (
+                  claimSummary.charges.map((charge) => (
+                    <div
+                      key={charge.id}
+                      className="rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2 text-xs"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-semibold text-white">
+                          {charge.type}
+                        </span>
+                        <StatusPill value={charge.status} />
+                      </div>
+                      <p className="mt-1 text-gray-300">
+                        {money.format(charge.amount || 0)} ·{" "}
+                        {charge.description || "Không có mô tả"}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-500">Chưa có phí.</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                Blocker / bước tiếp theo
+              </p>
+              <div className="mt-3 space-y-2">
+                {(claimSummary.blockers || []).map((blocker) => (
+                  <p
+                    key={blocker.code}
+                    className="rounded-lg border border-yellow-500/10 bg-yellow-500/5 px-3 py-2 text-xs text-yellow-100"
+                  >
+                    {claimBlockerText(blocker)}
+                  </p>
+                ))}
+                {(claimSummary.nextActions || []).map((action) => (
+                  <p
+                    key={`${action.actor}-${action.action}`}
+                    className="rounded-lg border border-blue-500/10 bg-blue-500/5 px-3 py-2 text-xs text-blue-100"
+                  >
+                    {action.actor}: {action.action}
+                  </p>
+                ))}
+                {(claimSummary.blockers || []).length === 0 &&
+                  (claimSummary.nextActions || []).length === 0 && (
+                    <p className="text-xs text-gray-500">
+                      Không còn bước xử lý.
+                    </p>
+                  )}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                Dòng xử lý
+              </p>
+              <div className="mt-3 space-y-2">
+                {(claimSummary.timeline || [])
+                  .slice(-5)
+                  .reverse()
+                  .map((event) => (
+                    <p
+                      key={`${event.type}-${event.occurredAt}`}
+                      className="text-xs text-gray-300"
+                    >
+                      <span className="text-gray-500">
+                        {formatDateTime(event.occurredAt)}
+                      </span>{" "}
+                      {claimTimelineText(event)}
+                    </p>
+                  ))}
+                {(claimSummary.timeline || []).length === 0 && (
+                  <p className="text-xs text-gray-500">Chưa có timeline.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="bg-primary rounded-xl border border-white/5 overflow-hidden shadow-2xl mb-6">
         <div className="p-5 border-b border-white/5">
           <h3 className="font-bold uppercase tracking-wider">Phí phát sinh</h3>
@@ -292,14 +533,30 @@ const FinancialOperations = () => {
               {queue.charges.length > 0 ? (
                 queue.charges.map((charge) => {
                   const dispute = getDisputeInfo(charge);
+                  const manual = getManualInfo(charge);
+                  const evidenceUrls = getChargeEvidenceUrls(charge);
+                  const booking = charge.booking || {};
 
                   return (
                     <tr
                       key={charge.id}
                       className="border-b border-white/5 hover:bg-white/5"
                     >
-                      <td className="p-5 font-semibold">
-                        {formatId(charge.bookingId)}
+                      <td className="p-5">
+                        <p className="font-semibold">
+                          {formatId(charge.bookingId)}
+                        </p>
+                        <div className="mt-2 space-y-0.5 text-[11px] text-gray-500">
+                          {booking.vehicleId && (
+                            <p>Xe {formatId(booking.vehicleId)}</p>
+                          )}
+                          {booking.ownerId && (
+                            <p>Owner {formatId(booking.ownerId)}</p>
+                          )}
+                          {booking.renterId && (
+                            <p>Renter {formatId(booking.renterId)}</p>
+                          )}
+                        </div>
                       </td>
                       <td className="p-5 text-sm">{charge.type}</td>
                       <td className="p-5">
@@ -310,6 +567,40 @@ const FinancialOperations = () => {
                       </td>
                       <td className="p-5 text-sm text-gray-300 max-w-[360px]">
                         <p>{charge.description}</p>
+                        {manual && (
+                          <div className="mt-3 rounded-lg border border-blue-400/20 bg-blue-500/10 p-3 text-blue-100">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200">
+                              Owner gửi phí
+                            </p>
+                            <p className="mt-1 text-xs">
+                              {manual.createdAt
+                                ? `Gửi lúc ${formatDateTime(manual.createdAt)}`
+                                : "Chưa có thời gian gửi"}
+                            </p>
+                            {manual.requestedAmount &&
+                              manual.requestedAmount !== charge.amount && (
+                                <p className="mt-1 text-[11px] text-blue-200/80">
+                                  Giá trị owner báo:{" "}
+                                  {money.format(manual.requestedAmount)}
+                                </p>
+                              )}
+                          </div>
+                        )}
+                        {evidenceUrls.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {evidenceUrls.map((url, index) => (
+                              <a
+                                key={url}
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[11px] font-semibold text-blue-200 underline decoration-blue-300/60"
+                              >
+                                Bằng chứng owner {index + 1}
+                              </a>
+                            ))}
+                          </div>
+                        )}
                         {dispute && (
                           <div className="mt-3 rounded-lg border border-purple-400/20 bg-purple-500/10 p-3 text-purple-100">
                             <p className="text-[10px] font-bold uppercase tracking-widest text-purple-200">
@@ -341,6 +632,15 @@ const FinancialOperations = () => {
                       </td>
                       <td className="p-5">
                         <div className="flex flex-wrap gap-2">
+                          <button
+                            disabled={claimLoadingId === charge.bookingId}
+                            onClick={() => loadChargeTracking(charge.bookingId)}
+                            className="px-3 py-1.5 rounded-md bg-blue-500/20 text-blue-300 hover:bg-blue-500 hover:text-white text-xs font-bold disabled:opacity-60"
+                          >
+                            {claimLoadingId === charge.bookingId
+                              ? "Đang tải"
+                              : "Xem tracking"}
+                          </button>
                           {charge.status === "PENDING_REVIEW" && (
                             <>
                               <button
