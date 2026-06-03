@@ -11,6 +11,7 @@ vi.mock("../Service/adminService", () => ({
     releaseDeposit: vi.fn(),
     createOrRefreshOwnerPayout: vi.fn(),
     updateOwnerPayoutStatus: vi.fn(),
+    getBookingClaimSummary: vi.fn(),
   },
 }));
 
@@ -107,6 +108,97 @@ describe("FinancialOperations", () => {
         "booking-approved",
       );
     });
+  });
+
+  it("shows owner evidence and opens booking tracking for charge decisions", async () => {
+    adminService.getFinancialQueue.mockResolvedValue({
+      status: "success",
+      data: {
+        deposits: [],
+        payouts: [],
+        charges: [
+          {
+            id: "charge-3",
+            bookingId: "booking-tracking",
+            type: "DAMAGE",
+            status: "PENDING_REVIEW",
+            amount: 180000,
+            description: "Broken mirror",
+            evidence: {
+              manual: {
+                createdAt: "2026-06-03T12:00:00.000Z",
+                evidenceUrls: ["https://example.com/owner-checkout.jpg"],
+              },
+            },
+            booking: {
+              vehicleId: "vehicle-1",
+              ownerId: "owner-1",
+              renterId: "renter-1",
+            },
+          },
+        ],
+      },
+    });
+    adminService.getBookingClaimSummary.mockResolvedValue({
+      status: "success",
+      data: {
+        bookingId: "booking-tracking",
+        status: "AWAITING_CHARGE_REVIEW",
+        totals: {
+          pendingChargeAmount: 180000,
+          approvedChargeAmount: 0,
+          releasableDepositAmount: 320000,
+        },
+        blockers: [
+          {
+            code: "UNRESOLVED_POST_TRIP_CHARGES",
+            count: 1,
+          },
+        ],
+        nextActions: [
+          {
+            actor: "ADMIN",
+            action: "Review disputed or pending post-trip charges",
+          },
+        ],
+        charges: [
+          {
+            id: "charge-3",
+            type: "DAMAGE",
+            status: "PENDING_REVIEW",
+            amount: 180000,
+            description: "Broken mirror",
+          },
+        ],
+        timeline: [
+          {
+            type: "POST_TRIP_CHARGE_CREATED",
+            occurredAt: "2026-06-03T12:00:00.000Z",
+          },
+        ],
+      },
+    });
+
+    render(<FinancialOperations />);
+
+    expect(await screen.findByText("Owner gửi phí")).toBeInTheDocument();
+    expect(screen.getByText("Bằng chứng owner 1")).toHaveAttribute(
+      "href",
+      "https://example.com/owner-checkout.jpg",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Xem tracking" }));
+
+    await waitFor(() => {
+      expect(adminService.getBookingClaimSummary).toHaveBeenCalledWith(
+        "booking-tracking",
+      );
+    });
+    expect(
+      await screen.findByText(/Tracking quyết định phí/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Chờ duyệt phí")).toBeInTheDocument();
+    expect(screen.getByText("Phí sau chuyến được tạo")).toBeInTheDocument();
   });
 
   it("lets admin complete a ready owner payout", async () => {
